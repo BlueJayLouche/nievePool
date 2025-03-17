@@ -126,17 +126,29 @@ int MidiManager::getCurrentDeviceIndex() const {
 }
 
 void MidiManager::loadSettings(ofxXmlSettings& xml) {
-    // Get preferred device
-    preferredDeviceName = xml.getValue("midi:preferredDevice", "");
-    
-    // Try to connect to preferred device if available
-    if (!preferredDeviceName.empty()) {
-        for (size_t i = 0; i < availableDevices.size(); i++) {
-            if (availableDevices[i] == preferredDeviceName) {
-                connectToDevice(i);
-                break;
+    // We're already inside the paramManager tag from ofApp::setup
+    if (xml.tagExists("midi")) {
+        xml.pushTag("midi");
+        
+        // Get preferred device name
+        preferredDeviceName = xml.getValue("preferredDevice", "");
+        
+        ofLogNotice("MidiManager") << "Loading MIDI settings, preferred device: " << preferredDeviceName;
+        
+        // Try to connect to the saved device if it exists
+        if (!preferredDeviceName.empty() && preferredDeviceName != "Not connected") {
+            for (size_t i = 0; i < availableDevices.size(); i++) {
+                if (availableDevices[i] == preferredDeviceName) {
+                    connectToDevice(i);
+                    ofLogNotice("MidiManager") << "Connected to saved MIDI device: " << preferredDeviceName;
+                    break;
+                }
             }
         }
+        
+        xml.popTag(); // pop midi
+    } else {
+        ofLogWarning("MidiManager") << "No midi tag found in settings";
     }
 }
 

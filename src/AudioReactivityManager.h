@@ -9,11 +9,39 @@
 
 /**
  * @class AudioReactivityManager
- * @brief Handles audio analysis and parameter modulation based on sound input
+ * @brief Handles audio input analysis and parameter modulation based on frequency bands
  *
- * This class analyzes audio input using ofxFft, groups frequency bands,
- * and applies audio-reactive modulation to parameters based on XML configuration.
+ * This class performs real-time audio analysis using FFT, divides the frequency spectrum
+ * into configurable bands, and maps these bands to effect parameters. This creates
+ * audio-reactive visuals where the video effects respond to the audio input.
+ *
+ * Features:
+ * - Multiple audio input device support with hot-swapping
+ * - Configurable frequency bands (defaults to 8 bands)
+ * - Customizable mapping of frequency bands to effect parameters
+ * - Sensitivity and smoothing controls
+ * - Normalization to handle varying input levels
+ * - Thread-safe design for audio processing
+ * - XML configuration for saving and loading settings
+ *
+ * Usage example:
+ * @code
+ * // Initialize with parameter manager
+ * audioManager = std::make_unique<AudioReactivityManager>(paramManager.get());
+ * audioManager->setup();
+ *
+ * // Add a mapping from bass band to z-displacement
+ * AudioReactivityManager::BandMapping bassMapping;
+ * bassMapping.band = 0;  // Sub bass
+ * bassMapping.paramId = "z_displace";
+ * bassMapping.scale = 0.02f;
+ * bassMapping.min = -0.02f;
+ * bassMapping.max = 0.02f;
+ * bassMapping.additive = true;
+ * audioManager->addMapping(bassMapping);
+ * @endcode
  */
+
 class AudioReactivityManager : public ofBaseSoundInput {
 public:
     AudioReactivityManager(ParameterManager* paramManager);
@@ -83,7 +111,9 @@ private:
     void groupBands();
     void applyMappings();
     
+    
     // Helper methods
+    float getParameterValue(const std::string& paramId) const;
     void applyParameterValue(const std::string& paramId, float value, bool additive);
     void setupDefaultBandRanges();
     

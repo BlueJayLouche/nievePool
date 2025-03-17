@@ -166,73 +166,82 @@ float ParameterManager::getPLockValue(int paramIndex) const {
 }
 
 void ParameterManager::loadFromXml(ofxXmlSettings& xml) {
+    // Only proceed if paramManager tag exists
+    if (!xml.tagExists("paramManager")) {
+        ofLogWarning("ParameterManager") << "No paramManager tag found in settings";
+        return;
+    }
+    
+    // Push into the paramManager tag
+    xml.pushTag("paramManager");
+    
     // Load toggle states
-    hueInvert = xml.getValue("toggles:hueInvert", false);
-    saturationInvert = xml.getValue("toggles:saturationInvert", false);
-    brightnessInvert = xml.getValue("toggles:brightnessInvert", false);
-    horizontalMirror = xml.getValue("toggles:horizontalMirror", false);
-    verticalMirror = xml.getValue("toggles:verticalMirror", false);
-    lumakeyInvert = xml.getValue("toggles:lumakeyInvert", false);
-    toroidEnabled = xml.getValue("toggles:toroidEnabled", false);
-    mirrorModeEnabled = xml.getValue("toggles:mirrorModeEnabled", false);
-    wetModeEnabled = xml.getValue("toggles:wetModeEnabled", true);
+    hueInvert = xml.getValue("toggles:hueInvert", hueInvert);
+    saturationInvert = xml.getValue("toggles:saturationInvert", saturationInvert);
+    brightnessInvert = xml.getValue("toggles:brightnessInvert", brightnessInvert);
+    horizontalMirror = xml.getValue("toggles:horizontalMirror", horizontalMirror);
+    verticalMirror = xml.getValue("toggles:verticalMirror", verticalMirror);
+    lumakeyInvert = xml.getValue("toggles:lumakeyInvert", lumakeyInvert);
+    toroidEnabled = xml.getValue("toggles:toroidEnabled", toroidEnabled);
+    mirrorModeEnabled = xml.getValue("toggles:mirrorModeEnabled", mirrorModeEnabled);
+    wetModeEnabled = xml.getValue("toggles:wetModeEnabled", wetModeEnabled);
     
     // Load effect parameters
-    lumakeyValue = xml.getValue("parameters:lumakeyValue", 0.0f);
-    mix = xml.getValue("parameters:mix", 0.0f);
-    hue = xml.getValue("parameters:hue", 1.0f);
-    saturation = xml.getValue("parameters:saturation", 1.0f);
-    brightness = xml.getValue("parameters:brightness", 1.0f);
-    temporalFilterMix = xml.getValue("parameters:temporalFilterMix", 0.0f);
-    temporalFilterResonance = xml.getValue("parameters:temporalFilterResonance", 0.0f);
-    sharpenAmount = xml.getValue("parameters:sharpenAmount", 0.0f);
-    xDisplace = xml.getValue("parameters:xDisplace", 0.0f);
-    yDisplace = xml.getValue("parameters:yDisplace", 0.0f);
-    zDisplace = xml.getValue("parameters:zDisplace", 1.0f);
-    rotate = xml.getValue("parameters:rotate", 0.0f);
-    hueModulation = xml.getValue("parameters:hueModulation", 1.0f);
-    hueOffset = xml.getValue("parameters:hueOffset", 0.0f);
-    hueLFO = xml.getValue("parameters:hueLFO", 0.0f);
-    delayAmount = xml.getValue("parameters:delayAmount", 0);
+    lumakeyValue = xml.getValue("parameters:lumakeyValue", lumakeyValue);
+    mix = xml.getValue("parameters:mix", mix);
+    hue = xml.getValue("parameters:hue", hue);
+    saturation = xml.getValue("parameters:saturation", saturation);
+    brightness = xml.getValue("parameters:brightness", brightness);
+    temporalFilterMix = xml.getValue("parameters:temporalFilterMix", temporalFilterMix);
+    temporalFilterResonance = xml.getValue("parameters:temporalFilterResonance", temporalFilterResonance);
+    sharpenAmount = xml.getValue("parameters:sharpenAmount", sharpenAmount);
+    xDisplace = xml.getValue("parameters:xDisplace", xDisplace);
+    yDisplace = xml.getValue("parameters:yDisplace", yDisplace);
+    zDisplace = xml.getValue("parameters:zDisplace", zDisplace);
+    rotate = xml.getValue("parameters:rotate", rotate);
+    hueModulation = xml.getValue("parameters:hueModulation", hueModulation);
+    hueOffset = xml.getValue("parameters:hueOffset", hueOffset);
+    hueLFO = xml.getValue("parameters:hueLFO", hueLFO);
+    delayAmount = xml.getValue("parameters:delayAmount", delayAmount);
     
     // Load LFO parameters
-    xLfoAmp = xml.getValue("lfo:xLfoAmp", 0.0f);
-    xLfoRate = xml.getValue("lfo:xLfoRate", 0.0f);
-    yLfoAmp = xml.getValue("lfo:yLfoAmp", 0.0f);
-    yLfoRate = xml.getValue("lfo:yLfoRate", 0.0f);
-    zLfoAmp = xml.getValue("lfo:zLfoAmp", 0.0f);
-    zLfoRate = xml.getValue("lfo:zLfoRate", 0.0f);
-    rotateLfoAmp = xml.getValue("lfo:rotateLfoAmp", 0.0f);
-    rotateLfoRate = xml.getValue("lfo:rotateLfoRate", 0.0f);
+    xLfoAmp = xml.getValue("lfo:xLfoAmp", xLfoAmp);
+    xLfoRate = xml.getValue("lfo:xLfoRate", xLfoRate);
+    yLfoAmp = xml.getValue("lfo:yLfoAmp", yLfoAmp);
+    yLfoRate = xml.getValue("lfo:yLfoRate", yLfoRate);
+    zLfoAmp = xml.getValue("lfo:zLfoAmp", zLfoAmp);
+    zLfoRate = xml.getValue("lfo:zLfoRate", zLfoRate);
+    rotateLfoAmp = xml.getValue("lfo:rotateLfoAmp", rotateLfoAmp);
+    rotateLfoRate = xml.getValue("lfo:rotateLfoRate", rotateLfoRate);
     
     // Load video reactivity parameters
-    vLumakeyValue = xml.getValue("videoReactive:vLumakeyValue", 0.0f);
-    vMix = xml.getValue("videoReactive:vMix", 0.0f);
-    vHue = xml.getValue("videoReactive:vHue", 0.0f);
-    vSaturation = xml.getValue("videoReactive:vSaturation", 0.0f);
-    vBrightness = xml.getValue("videoReactive:vBrightness", 0.0f);
-    vTemporalFilterMix = xml.getValue("videoReactive:vTemporalFilterMix", 0.0f);
-    vTemporalFilterResonance = xml.getValue("videoReactive:vTemporalFilterResonance", 0.0f);
-    vSharpenAmount = xml.getValue("videoReactive:vSharpenAmount", 0.0f);
-    vXDisplace = xml.getValue("videoReactive:vXDisplace", 0.0f);
-    vYDisplace = xml.getValue("videoReactive:vYDisplace", 0.0f);
-    vZDisplace = xml.getValue("videoReactive:vZDisplace", 0.0f);
-    vRotate = xml.getValue("videoReactive:vRotate", 0.0f);
-    vHueModulation = xml.getValue("videoReactive:vHueModulation", 0.0f);
-    vHueOffset = xml.getValue("videoReactive:vHueOffset", 0.0f);
-    vHueLFO = xml.getValue("videoReactive:vHueLFO", 0.0f);
+    vLumakeyValue = xml.getValue("videoReactive:vLumakeyValue", vLumakeyValue);
+    vMix = xml.getValue("videoReactive:vMix", vMix);
+    vHue = xml.getValue("videoReactive:vHue", vHue);
+    vSaturation = xml.getValue("videoReactive:vSaturation", vSaturation);
+    vBrightness = xml.getValue("videoReactive:vBrightness", vBrightness);
+    vTemporalFilterMix = xml.getValue("videoReactive:vTemporalFilterMix", vTemporalFilterMix);
+    vTemporalFilterResonance = xml.getValue("videoReactive:vTemporalFilterResonance", vTemporalFilterResonance);
+    vSharpenAmount = xml.getValue("videoReactive:vSharpenAmount", vSharpenAmount);
+    vXDisplace = xml.getValue("videoReactive:vXDisplace", vXDisplace);
+    vYDisplace = xml.getValue("videoReactive:vYDisplace", vYDisplace);
+    vZDisplace = xml.getValue("videoReactive:vZDisplace", vZDisplace);
+    vRotate = xml.getValue("videoReactive:vRotate", vRotate);
+    vHueModulation = xml.getValue("videoReactive:vHueModulation", vHueModulation);
+    vHueOffset = xml.getValue("videoReactive:vHueOffset", vHueOffset);
+    vHueLFO = xml.getValue("videoReactive:vHueLFO", vHueLFO);
     
     // Load mode flags
-    videoReactiveMode = xml.getValue("modes:videoReactiveMode", false);
-    lfoAmpMode = xml.getValue("modes:lfoAmpMode", false);
-    lfoRateMode = xml.getValue("modes:lfoRateMode", false);
+    videoReactiveMode = xml.getValue("modes:videoReactiveMode", videoReactiveMode);
+    lfoAmpMode = xml.getValue("modes:lfoAmpMode", lfoAmpMode);
+    lfoRateMode = xml.getValue("modes:lfoRateMode", lfoRateMode);
     
     // Load P-Lock data if available
     if (xml.tagExists("plocks")) {
         xml.pushTag("plocks");
         
         // Load smooth factor
-        pLockSmoothFactor = xml.getValue("smoothFactor", 0.5f);
+        pLockSmoothFactor = xml.getValue("smoothFactor", pLockSmoothFactor);
         
         if (xml.tagExists("locks")) {
             xml.pushTag("locks");
@@ -261,9 +270,18 @@ void ParameterManager::loadFromXml(ofxXmlSettings& xml) {
         
         xml.popTag(); // pop plocks
     }
+    
+    // Pop the paramManager tag
+    xml.popTag();
 }
 
 void ParameterManager::saveToXml(ofxXmlSettings& xml) const {
+    // Add param manager section
+    if (!xml.tagExists("paramManager")) {
+        xml.addTag("paramManager");
+    }
+    xml.pushTag("paramManager");
+    
     // Save toggle states
     xml.setValue("toggles:hueInvert", hueInvert);
     xml.setValue("toggles:saturationInvert", saturationInvert);
@@ -356,9 +374,10 @@ void ParameterManager::saveToXml(ofxXmlSettings& xml) const {
     
     xml.popTag(); // pop locks
     xml.popTag(); // pop plocks
+    
+    xml.popTag(); // pop paramManager
 }
 
-// Get/Set Methods Implementation
 // Toggle state getters/setters
 bool ParameterManager::isHueInverted() const { return hueInvert; }
 void ParameterManager::setHueInverted(bool enabled) { hueInvert = enabled; }

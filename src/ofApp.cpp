@@ -2,8 +2,56 @@
 
 //--------------------------------------------------------------
 void ofApp::setup() {
-    // Set up basic OF settings
-    ofSetFrameRate(30);
+    // Check if settings file exists and validate structure
+    ofFile settingsFile(ofToDataPath("settings.xml"));
+    bool resetNeeded = false;
+    
+    if (settingsFile.exists()) {
+        // Load file to check structure
+        ofxXmlSettings testXml;
+        if (testXml.loadFile(ofToDataPath("settings.xml"))) {
+            // Check for nested paramManager tags
+            if (testXml.pushTag("paramManager")) {
+                if (testXml.tagExists("paramManager")) {
+                    // Found nested paramManager, need reset
+                    resetNeeded = true;
+                    ofLogWarning("ofApp") << "Nested paramManager tags detected, resetting settings file";
+                }
+                testXml.popTag();
+            }
+        } else {
+            // Couldn't load file, reset it
+            resetNeeded = true;
+            ofLogWarning("ofApp") << "Could not parse settings.xml, resetting file";
+        }
+    }
+    
+    if (resetNeeded || !settingsFile.exists()) {
+        resetSettingsFile();
+    }
+    
+    // Load app-level settings first (outside the paramManager tag)
+    ofxXmlSettings xml;
+    if (xml.loadFile(ofToDataPath("settings.xml"))) {
+        // First try to load app settings from root level
+        if (xml.tagExists("app")) {
+            xml.pushTag("app");
+            
+            // Load application settings
+            debugEnabled = xml.getValue("debugEnabled", false);
+            configWidth = xml.getValue("width", 1024);
+            configHeight = xml.getValue("height", 768);
+            configFrameRate = xml.getValue("frameRate", 30);
+            
+            xml.popTag(); // pop app tag
+            
+            // Set framerate and window size based on config
+            ofSetFrameRate(configFrameRate);
+            ofSetWindowShape(configWidth, configHeight);
+        }
+    }
+    
+    // Continue with the standard setup
     ofSetVerticalSync(true);
     ofBackground(0);
     ofHideCursor();
@@ -20,7 +68,7 @@ void ofApp::setup() {
     
     // Initialize video feedback manager with references to other managers
     videoManager = std::make_unique<VideoFeedbackManager>(paramManager.get(), shaderManager.get());
-    videoManager->setup(width, height);
+    videoManager->setup(configWidth, configHeight);  // Use config dimensions
     
     // Initialize MIDI manager with reference to parameter manager
     midiManager = std::make_unique<MidiManager>(paramManager.get());
@@ -30,65 +78,51 @@ void ofApp::setup() {
     audioManager = std::make_unique<AudioReactivityManager>(paramManager.get());
     audioManager->setup();
     
-    // Try to load audio settings from XML
-    ofxXmlSettings xml;
+    // Try to load settings from XML with proper structure
     if (xml.loadFile(ofToDataPath("settings.xml"))) {
-        audioManager->loadFromXml(xml);
-    }
-    
-    // Add some default mappings if none exist
-    if (audioManager->getMappings().empty()) {
-        ofLogNotice("ofApp") << "Setting up default audio mappings";
+        ofLogNotice("ofApp") << "Loading settings from settings.xml";
         
-        // Sub bass affects z_displace (create depth pulsing)
-        AudioReactivityManager::BandMapping bassMapping;
-        bassMapping.band = 0;  // Sub bass
-        bassMapping.paramId = "z_displace";
-        bassMapping.scale = 0.25f;
-        bassMapping.min = 0.0f;
-        bassMapping.max = 1.0f;
-        bassMapping.additive = true;
-        audioManager->addMapping(bassMapping);
+        try {
+            // Load parameter manager settings first
+            paramManager->loadFromXml(xml);
+            
+            // For other managers, we need to navigate to the paramManager tag first
+            if (xml.pushTag("paramManager")) {
+                // Load audio settings if present
+                if (xml.tagExists("audioReactivity")) {
+                    audioManager->loadFromXml(xml);
+                } else {
+                    ofLogWarning("ofApp") << "No audioReactivity section found in settings";
+                }
+                
+                // Load video settings if present
+                if (xml.tagExists("videoFeedback")) {
+                    videoManager->loadFromXml(xml);
+                } else {
+                    ofLogWarning("ofApp") << "No videoFeedback section found in settings";
+                }
+                
+                // Load MIDI settings if present
+                if (xml.tagExists("midi")) {
+                    midiManager->loadSettings(xml);
+                } else {
+                    ofLogWarning("ofApp") << "No midi section found in settings";
+                }
+                
+                xml.popTag(); // Pop paramManager tag
+            } else {
+                ofLogWarning("ofApp") << "No paramManager tag found in settings.xml";
+            }
+        } catch (const std::exception& e) {
+            ofLogError("ofApp") << "Exception loading settings: " << e.what();
+        }
+    } else {
+        ofLogNotice("ofApp") << "No settings.xml found or couldn't load it, using defaults";
         
-        // Low mids affect x_displace
-        AudioReactivityManager::BandMapping lowMidsMapping;
-        lowMidsMapping.band = 2;  // Low mids
-        lowMidsMapping.paramId = "x_displace";
-        lowMidsMapping.scale = 0.01f;
-        lowMidsMapping.min = -0.1f;
-        lowMidsMapping.max = 0.1f;
-        lowMidsMapping.additive = true;
-        audioManager->addMapping(lowMidsMapping);
-        
-        // Mids affect y_displace
-        AudioReactivityManager::BandMapping midsMapping;
-        midsMapping.band = 3;  // Mids
-        midsMapping.paramId = "y_displace";
-        midsMapping.scale = 0.01f;
-        midsMapping.min = -0.1f;
-        midsMapping.max = 0.1f;
-        midsMapping.additive = true;
-        audioManager->addMapping(midsMapping);
-        
-        // Presence affects saturation
-        AudioReactivityManager::BandMapping presenceMapping;
-        presenceMapping.band = 5;  // Presence (4-6kHz)
-        presenceMapping.paramId = "saturation";
-        presenceMapping.scale = 0.5f;
-        presenceMapping.min = 0.8f;
-        presenceMapping.max = 1.2f;
-        presenceMapping.additive = false;  // Directly set the value
-        audioManager->addMapping(presenceMapping);
-        
-        // Brilliance affects hue modulation
-        AudioReactivityManager::BandMapping brillianceMapping;
-        brillianceMapping.band = 6;  // Brilliance (6-12kHz)
-        brillianceMapping.paramId = "hue_modulation";
-        brillianceMapping.scale = 0.5f;
-        brillianceMapping.min = 0.9f;
-        brillianceMapping.max = 1.2f;
-        brillianceMapping.additive = true;
-        audioManager->addMapping(brillianceMapping);
+        // Add default audio mappings if none exist
+        if (audioManager->getMappings().empty()) {
+            setupDefaultAudioMappings();
+        }
     }
     
     // Initialize performance monitoring
@@ -97,17 +131,113 @@ void ofApp::setup() {
     }
 }
 
+
+// Add a helper method for default audio mappings
+void ofApp::setupDefaultAudioMappings() {
+    ofLogNotice("ofApp") << "Setting up default audio mappings";
+    
+    // Sub bass affects z_displace (create depth pulsing)
+    AudioReactivityManager::BandMapping bassMapping;
+    bassMapping.band = 0;  // Sub bass
+    bassMapping.paramId = "z_displace";
+    bassMapping.scale = 0.5f;
+    bassMapping.min = -0.2f;
+    bassMapping.max = 0.2f;
+    bassMapping.additive = false;
+    audioManager->addMapping(bassMapping);
+    
+    // Add more default mappings...
+    
+    // Low mids affect x_displace
+    AudioReactivityManager::BandMapping lowMidsMapping;
+    lowMidsMapping.band = 2;  // Low mids
+    lowMidsMapping.paramId = "x_displace";
+    lowMidsMapping.scale = 0.05f;
+    lowMidsMapping.min = -0.1f;
+    lowMidsMapping.max = 0.1f;
+    lowMidsMapping.additive = false;
+    audioManager->addMapping(lowMidsMapping);
+    
+    // Mids affect y_displace
+    AudioReactivityManager::BandMapping midsMapping;
+    midsMapping.band = 3;  // Mids
+    midsMapping.paramId = "y_displace";
+    midsMapping.scale = 0.5f;
+    midsMapping.min = -0.1f;
+    midsMapping.max = 0.1f;
+    midsMapping.additive = false;
+    audioManager->addMapping(midsMapping);
+    
+    // High mids affect hue
+    AudioReactivityManager::BandMapping highMidsMapping;
+    highMidsMapping.band = 4;  // High mids
+    highMidsMapping.paramId = "hue";
+    highMidsMapping.scale = 0.01f;
+    highMidsMapping.min = 0.8f;
+    highMidsMapping.max = 1.2f;
+    highMidsMapping.additive = false;  // Direct setting works better for hue
+    audioManager->addMapping(highMidsMapping);
+}
+
+void ofApp::resetSettingsFile() {
+    ofxXmlSettings xml;
+    
+    // Create a clean XML structure
+    xml.addTag("app");
+    xml.pushTag("app");
+    xml.setValue("version", "1.0.0");
+    xml.setValue("lastSaved", ofGetTimestampString());
+    xml.setValue("debugEnabled", debugEnabled ? 1 : 0);
+    xml.setValue("width", configWidth);
+    xml.setValue("height", configHeight);
+    xml.setValue("frameRate", configFrameRate);
+    xml.popTag(); // pop app
+    
+    // Add empty paramManager tag
+    xml.addTag("paramManager");
+    
+    // Save with error handling
+    try {
+        bool saved = xml.saveFile(ofToDataPath("settings.xml"));
+        ofLogNotice("ofApp") << "Settings file reset " << (saved ? "successfully" : "unsuccessfully");
+    } catch (const std::exception& e) {
+        ofLogError("ofApp") << "Exception resetting settings: " << e.what();
+    }
+}
+
 //--------------------------------------------------------------
 void ofApp::update() {
+    float startTime = ofGetElapsedTimef();
+    
     // Update managers
     paramManager->update();
     midiManager->update();
-    videoManager->update();
-    audioManager->update(); // Update audio manager
     
-    // Update performance monitoring
-    frameRateHistory[frameRateIndex] = ofGetFrameRate();
-    frameRateIndex = (frameRateIndex + 1) % 60;
+    // Only process video at display framerate
+    if (frameCounter % 1 == 0) { // Adjust divisor for lower processing rate
+        videoManager->update();
+    }
+    
+    audioManager->update();
+    
+    // Calculate frame time
+    float endTime = ofGetElapsedTimef();
+    lastFrameTime = (endTime - startTime) * 1000.0f; // Convert to ms
+    
+    // Update frame time history
+    frameTimeHistory.push_back(lastFrameTime);
+    if (frameTimeHistory.size() > 150) {
+        frameTimeHistory.pop_front();
+    }
+    
+    // Calculate average (last 150 frames)
+    averageFrameTime = 0;
+    for (float time : frameTimeHistory) {
+        averageFrameTime += time;
+    }
+    averageFrameTime /= frameTimeHistory.size();
+    
+    frameCounter++;
 }
 
 //--------------------------------------------------------------
@@ -126,20 +256,57 @@ void ofApp::exit() {
     // Clean shutdown of audio
     audioManager->exit();
     
-    // Save all settings
+    // Create a new XML document
     ofxXmlSettings xml;
     
-    // Load existing settings if available
-    xml.loadFile(ofToDataPath("settings.xml"));
+    // Check if we can load the existing file to preserve settings
+    bool existingFile = xml.loadFile(ofToDataPath("settings.xml"));
     
-    // Save parameter settings
+    // Update app settings (preserving existing values if file loaded)
+    if (!xml.tagExists("app")) {
+        xml.addTag("app");
+    }
+    xml.pushTag("app");
+    
+    // Only update these values if they don't exist or if file didn't load
+    if (!existingFile || !xml.tagExists("version")) {
+        xml.setValue("version", "1.0.0");
+    }
+    
+    // Always update lastSaved timestamp
+    xml.setValue("lastSaved", ofGetTimestampString());
+    
+    // Update current runtime values
+    xml.setValue("debugEnabled", debugEnabled ? 1 : 0);
+    xml.setValue("width", ofGetWidth());      // Save current window dimensions
+    xml.setValue("height", ofGetHeight());
+    xml.setValue("frameRate", (int)ofGetTargetFrameRate());
+    
+    xml.popTag(); // pop app
+    
+    // Ensure paramManager tag exists
+    if (!xml.tagExists("paramManager")) {
+        xml.addTag("paramManager");
+    }
+    
+    // Let each manager save its settings
     paramManager->saveToXml(xml);
     
-    // Save audio settings
-    audioManager->saveToXml(xml);
+    // Other managers should now save inside the paramManager tag
+    if (xml.pushTag("paramManager")) {
+        audioManager->saveToXml(xml);
+        videoManager->saveToXml(xml);
+        midiManager->saveSettings(xml);
+        xml.popTag(); // pop paramManager
+    }
     
-    // Save entire file
-    xml.saveFile(ofToDataPath("settings.xml"));
+    // Save entire file with error handling
+    try {
+        bool saved = xml.saveFile(ofToDataPath("settings.xml"));
+        ofLogNotice("ofApp") << "Settings saved " << (saved ? "successfully" : "unsuccessfully") << " to settings.xml";
+    } catch (const std::exception& e) {
+        ofLogError("ofApp") << "Exception saving settings: " << e.what();
+    }
 }
 
 //--------------------------------------------------------------
@@ -152,6 +319,23 @@ void ofApp::keyPressed(int key) {
         // Debug toggle
         case '`':
             debugEnabled = !debugEnabled;
+            break;
+            
+        // Video device controls
+        case '<':
+            if (shiftPressed) {
+                int current = videoManager->getCurrentVideoDeviceIndex();
+                if (current > 0) {
+                    videoManager->selectVideoDevice(current - 1);
+                }
+            }
+            break;
+            
+        case '>':
+            if (shiftPressed) {
+                int current = videoManager->getCurrentVideoDeviceIndex();
+                videoManager->selectVideoDevice(current + 1);
+            }
             break;
             
         // Audio enabling/disabling (capital A)
@@ -178,18 +362,18 @@ void ofApp::keyPressed(int key) {
             }
             break;
 
-        // Previous audio device - use '<' instead of '['
-        case '<':
-            if (shiftPressed) {
-                int current = audioManager->getCurrentDeviceIndex();
-                if (current > 0) {
-                    audioManager->selectAudioDevice(current - 1);
-                }
-            }
-            break;
+//        // Previous audio device - use '<' instead of '['
+//        case '<':
+//            if (shiftPressed) {
+//                int current = audioManager->getCurrentDeviceIndex();
+//                if (current > 0) {
+//                    audioManager->selectAudioDevice(current - 1);
+//                }
+//            }
+//            break;
 
-        // Next audio device - use '>' instead of ']'
-        case '>':
+        // Next audio device
+        case 'D':
             if (shiftPressed) {
                 int current = audioManager->getCurrentDeviceIndex();
                 audioManager->selectAudioDevice(current + 1);
@@ -357,7 +541,50 @@ void ofApp::keyPressed(int key) {
             paramManager->setRotateLfoAmp(0.0f);
             paramManager->setRotateLfoRate(0.0f);
             break;
+            
+            // Toggle performance mode
+//             case 'P':
+//                 if (shiftPressed) {
+//                     performanceMode = !performanceMode;
+//                     ofLogNotice("ofApp") << "Performance mode " << (performanceMode ? "enabled" : "disabled");
+//
+//                     // Reinitialize components with performance settings
+//                     audioManager->setup(performanceMode);
+//                     // Adjust other managers for performance if needed
+//                 }
+//                 break;
+                 
+             // Fullscreen toggle
+             case 'F':
+                 if (shiftPressed) {
+                     ofToggleFullscreen();
+                 }
+                 break;
+                 
+             // Save settings
+             case 'S':
+                 if (shiftPressed) {
+                     ofxXmlSettings xml;
+                     paramManager->saveToXml(xml);
+                     audioManager->saveToXml(xml);
+                     xml.saveFile(ofToDataPath("settings.xml"));
+                     ofLogNotice("ofApp") << "Settings saved to settings.xml";
+                 }
+                 break;
+                 
+             // Load settings
+             case 'L':
+                 if (shiftPressed) {
+                     ofxXmlSettings xml;
+                     if (xml.loadFile(ofToDataPath("settings.xml"))) {
+                         paramManager->loadFromXml(xml);
+                         audioManager->loadFromXml(xml);
+                         ofLogNotice("ofApp") << "Settings loaded from settings.xml";
+                     }
+                 }
+                 break;
     }
+    
 }
 
 //--------------------------------------------------------------
@@ -385,13 +612,67 @@ void ofApp::keyReleased(int key) {
 //--------------------------------------------------------------
 void ofApp::drawDebugInfo() {
     ofPushStyle();
-    ofSetColor(255, 255, 0); // Yellow text
     
-    int x = 10;
-    int y = 20;
+    // Layout settings
+    int margin = 10;
     int lineHeight = 15;
+    int columnWidth = ofGetWidth() / 3 - margin * 2;
     
-    // FPS information
+    // Draw system info in top-left
+    drawSystemInfo(margin, margin, lineHeight);
+    
+    // Draw performance info below system info
+    drawPerformanceInfo(margin, margin + lineHeight * 5, lineHeight);
+    
+    // Draw parameter info in the middle column
+    drawParameterInfo(ofGetWidth() / 3 + margin, margin, lineHeight);
+    
+    // Draw audio debug info in the right column
+    drawAudioDebugInfo(ofGetWidth() * 2 / 3 + margin, margin, lineHeight);
+    
+    // Draw video info at the bottom
+    drawVideoInfo(margin, ofGetHeight() - lineHeight * 6, lineHeight);
+    
+    // Draw help text at bottom
+    ofSetColor(180, 180, 255);
+    ofDrawBitmapString("Press ` to toggle debug display", margin, ofGetHeight() - lineHeight * 3);
+    ofDrawBitmapString("Press A to toggle audio reactivity", margin, ofGetHeight() - lineHeight * 2);
+    ofDrawBitmapString("Press N to toggle audio normalization", margin, ofGetHeight() - lineHeight);
+    
+    ofPopStyle();
+}
+
+void ofApp::drawSystemInfo(int x, int y, int lineHeight) {
+    ofSetColor(255, 255, 0);
+    
+    ofDrawBitmapString("SYSTEM INFO", x, y);
+    y += lineHeight;
+    
+    ofDrawBitmapString("Resolution: " + ofToString(ofGetWidth()) + "x" + ofToString(ofGetHeight()), x, y);
+    y += lineHeight;
+    
+    ofDrawBitmapString("OpenGL: " + ofToString(ofGetGLRenderer()), x, y);
+    y += lineHeight;
+    
+    // Get app runtime
+    float runTime = ofGetElapsedTimef();
+    int hours = floor(runTime / 3600);
+    int minutes = floor((runTime - hours * 3600) / 60);
+    int seconds = floor(runTime - hours * 3600 - minutes * 60);
+    string timeStr = ofToString(hours, 2, '0') + ":" +
+                     ofToString(minutes, 2, '0') + ":" +
+                     ofToString(seconds, 2, '0');
+    
+    ofDrawBitmapString("Runtime: " + timeStr, x, y);
+    y += lineHeight;
+}
+
+void ofApp::drawPerformanceInfo(int x, int y, int lineHeight) {
+    ofSetColor(255, 255, 0);
+    
+    ofDrawBitmapString("PERFORMANCE", x, y);
+    y += lineHeight;
+    
     string fpsStr = "FPS: " + ofToString(ofGetFrameRate(), 1);
     ofDrawBitmapString(fpsStr, x, y);
     y += lineHeight;
@@ -420,146 +701,30 @@ void ofApp::drawDebugInfo() {
         ofDrawLine(x + i * 2, y + graphHeight, x + i * 2, y + graphHeight - barHeight);
     }
     
-    y += graphHeight + lineHeight;
-    
-    // Draw key parameters
-    ofSetColor(255, 255, 0);
-    ofDrawBitmapString("--- Parameters ---", x, y);
-    y += lineHeight;
-    
-    ofDrawBitmapString("Lumakey: " + ofToString(paramManager->getLumakeyValue(), 3), x, y);
-    y += lineHeight;
-    
-    ofDrawBitmapString("Mix: " + ofToString(paramManager->getMix(), 3), x, y);
-    y += lineHeight;
-    
-    ofDrawBitmapString("Hue: " + ofToString(paramManager->getHue(), 3), x, y);
-    y += lineHeight;
-    
-    ofDrawBitmapString("Saturation: " + ofToString(paramManager->getSaturation(), 3), x, y);
-    y += lineHeight;
-    
-    ofDrawBitmapString("Brightness: " + ofToString(paramManager->getBrightness(), 3), x, y);
-    y += lineHeight;
-    
-    ofDrawBitmapString("X Displace: " + ofToString(paramManager->getXDisplace(), 3), x, y);
-    y += lineHeight;
-    
-    ofDrawBitmapString("Y Displace: " + ofToString(paramManager->getYDisplace(), 3), x, y);
-    y += lineHeight;
-    
-    ofDrawBitmapString("Z Displace: " + ofToString(paramManager->getZDisplace(), 3), x, y);
-    y += lineHeight;
-    
-    ofDrawBitmapString("Rotate: " + ofToString(paramManager->getRotate(), 3), x, y);
-    y += lineHeight;
-    
-    ofDrawBitmapString("Delay: " + ofToString(paramManager->getDelayAmount()), x, y);
-    y += lineHeight;
-    
-    // Draw audio debug info in the middle column
-    drawAudioDebugInfo(ofGetWidth() / 2 - 100, 20, lineHeight);
-    
-    // Toggles
-    y += lineHeight;
-    ofSetColor(255, 255, 0);
-    ofDrawBitmapString("--- Toggles ---", x, y);
-    y += lineHeight;
-    
-    ofDrawBitmapString("Hue Invert: " + ofToString(paramManager->isHueInverted()), x, y);
-    y += lineHeight;
-    
-    ofDrawBitmapString("Sat Invert: " + ofToString(paramManager->isSaturationInverted()), x, y);
-    y += lineHeight;
-    
-    ofDrawBitmapString("Bright Invert: " + ofToString(paramManager->isBrightnessInverted()), x, y);
-    y += lineHeight;
-    
-    ofDrawBitmapString("Horiz Mirror: " + ofToString(paramManager->isHorizontalMirrorEnabled()), x, y);
-    y += lineHeight;
-    
-    ofDrawBitmapString("Vert Mirror: " + ofToString(paramManager->isVerticalMirrorEnabled()), x, y);
-    y += lineHeight;
-    
-    ofDrawBitmapString("Toroid: " + ofToString(paramManager->isToroidEnabled()), x, y);
-    y += lineHeight;
-    
-    ofDrawBitmapString("Wet Mode: " + ofToString(paramManager->isWetModeEnabled()), x, y);
-    y += lineHeight;
-    
-    // Mode info
-    y += lineHeight;
-    ofDrawBitmapString("--- Modes ---", x, y);
-    y += lineHeight;
-    
-    ofDrawBitmapString("P-Lock Recording: " + ofToString(paramManager->isRecordingEnabled()), x, y);
-    y += lineHeight;
-    
-    ofDrawBitmapString("Video Reactive: " + ofToString(paramManager->isVideoReactiveEnabled()), x, y);
-    y += lineHeight;
-    
-    ofDrawBitmapString("LFO Amp Mode: " + ofToString(paramManager->isLfoAmpModeEnabled()), x, y);
-    y += lineHeight;
-    
-    ofDrawBitmapString("LFO Rate Mode: " + ofToString(paramManager->isLfoRateModeEnabled()), x, y);
-    y += lineHeight;
-    
-    // MIDI info on the right side
-    int rightX = ofGetWidth() - 250;
-    y = 20;
-    
-    ofDrawBitmapString("--- MIDI Info ---", rightX, y);
-    y += lineHeight;
-    
-    ofDrawBitmapString("Device: " + midiManager->getCurrentDeviceName(), rightX, y);
-    y += lineHeight;
-    
-    // Recent MIDI messages
-    ofDrawBitmapString("Recent messages:", rightX, y);
-    y += lineHeight;
-    
-    auto midiMessages = midiManager->getRecentMessages();
-    int maxMessages = std::min(static_cast<int>(midiMessages.size()), 5);
-    
-    if (midiMessages.size() > 0) {
-        for (int i = midiMessages.size() - maxMessages; i < midiMessages.size(); i++) {
-            const auto& msg = midiMessages[i];
-            std::string msgType;
-            
-            switch (msg.status) {
-                case MIDI_NOTE_ON: msgType = "Note On"; break;
-                case MIDI_NOTE_OFF: msgType = "Note Off"; break;
-                case MIDI_CONTROL_CHANGE: msgType = "CC"; break;
-                case MIDI_PROGRAM_CHANGE: msgType = "Program"; break;
-                case MIDI_PITCH_BEND: msgType = "Pitch Bend"; break;
-                case MIDI_AFTERTOUCH: msgType = "Aftertouch"; break;
-                case MIDI_POLY_AFTERTOUCH: msgType = "Poly AT"; break;
-                default: msgType = "Other"; break;
-            }
-            
-            std::string msgInfo = msgType + " Ch:" + ofToString(msg.channel) +
-                                " Ctrl:" + ofToString(msg.control) +
-                                " Val:" + ofToString(msg.value);
-            
-            ofDrawBitmapString(msgInfo, rightX, y);
-            y += lineHeight;
-        }
-    } else {
-        ofDrawBitmapString("No MIDI messages received", rightX, y);
-        y += lineHeight;
-    }
-    
-    // Help text at bottom
-    ofSetColor(180, 180, 255);
-    ofDrawBitmapString("Press ` to toggle debug display", x, ofGetHeight() - 45);
-    ofDrawBitmapString("Press A to toggle audio reactivity", x, ofGetHeight() - 30);
-    ofDrawBitmapString("Press N to toggle audio normalization", x, ofGetHeight() - 15);
-    ofDrawBitmapString("Use Shift+< and Shift+> to change audio device", x + 300, ofGetHeight() - 30);
-    ofDrawBitmapString("Use Shift++ and Shift+- to adjust audio sensitivity", x + 300, ofGetHeight() - 15);
-
-    ofPopStyle();
+    // Draw target FPS line (30 FPS)
+    ofSetColor(255, 255, 0, 100);
+    float y30fps = y + graphHeight - ofMap(30.0f, 0, 60.0f, 0, graphHeight);
+    ofDrawLine(x, y30fps, x + graphWidth, y30fps);
 }
 
+void ofApp::drawVideoInfo(int x, int y, int lineHeight) {
+    ofSetColor(255, 255, 0);
+    
+    ofDrawBitmapString("VIDEO INFO", x, y);
+    y += lineHeight;
+    
+    ofDrawBitmapString("Device: " + videoManager->getCurrentVideoDeviceName(), x, y);
+    y += lineHeight;
+    
+    ofDrawBitmapString("Feedback buffer: " + ofToString(videoManager->getFrameBufferLength()) + " frames", x, y);
+    y += lineHeight;
+    
+    ofDrawBitmapString("Delay: " + ofToString(paramManager->getDelayAmount()) + " frames", x, y);
+    y += lineHeight;
+    
+    ofDrawBitmapString("HDMI Aspect: " + ofToString(videoManager->isHdmiAspectRatioEnabled()), x, y);
+    y += lineHeight;
+}
 
 //--------------------------------------------------------------
 void ofApp::drawAudioDebugInfo(int x, int y, int lineHeight) {
@@ -651,4 +816,74 @@ void ofApp::drawAudioDebugInfo(int x, int y, int lineHeight) {
             ofDrawBitmapString("... and " + ofToString(mappings.size() - 5) + " more", x, y);
         }
     }
+}
+
+// Implementation for all the debug drawing methods in ofApp.cpp
+
+void ofApp::drawParameterInfo(int x, int y, int lineHeight) {
+    ofSetColor(255, 255, 0);
+    ofDrawBitmapString("--- Parameters ---", x, y);
+    y += lineHeight;
+    
+    // Main effect parameters
+    ofDrawBitmapString("Lumakey: " + ofToString(paramManager->getLumakeyValue(), 3), x, y);
+    y += lineHeight;
+    
+    ofDrawBitmapString("Mix: " + ofToString(paramManager->getMix(), 3), x, y);
+    y += lineHeight;
+    
+    ofDrawBitmapString("Hue: " + ofToString(paramManager->getHue(), 3), x, y);
+    y += lineHeight;
+    
+    ofDrawBitmapString("Saturation: " + ofToString(paramManager->getSaturation(), 3), x, y);
+    y += lineHeight;
+    
+    ofDrawBitmapString("Brightness: " + ofToString(paramManager->getBrightness(), 3), x, y);
+    y += lineHeight;
+    
+    ofDrawBitmapString("Temp. Mix: " + ofToString(paramManager->getTemporalFilterMix(), 3), x, y);
+    y += lineHeight;
+    
+    ofDrawBitmapString("Temp. Res: " + ofToString(paramManager->getTemporalFilterResonance(), 3), x, y);
+    y += lineHeight;
+    
+    ofDrawBitmapString("Sharpen: " + ofToString(paramManager->getSharpenAmount(), 3), x, y);
+    y += lineHeight;
+    
+    // Displacement parameters
+    y += lineHeight;
+    ofDrawBitmapString("--- Displacement ---", x, y);
+    y += lineHeight;
+    
+    ofDrawBitmapString("X Displace: " + ofToString(paramManager->getXDisplace(), 3), x, y);
+    y += lineHeight;
+    
+    ofDrawBitmapString("Y Displace: " + ofToString(paramManager->getYDisplace(), 3), x, y);
+    y += lineHeight;
+    
+    ofDrawBitmapString("Z Displace: " + ofToString(paramManager->getZDisplace(), 3), x, y);
+    y += lineHeight;
+    
+    ofDrawBitmapString("Rotate: " + ofToString(paramManager->getRotate(), 3), x, y);
+    y += lineHeight;
+    
+    // Toggles
+    y += lineHeight;
+    ofDrawBitmapString("--- Toggles ---", x, y);
+    y += lineHeight;
+    
+    ofDrawBitmapString("Hue Invert: " + ofToString(paramManager->isHueInverted()), x, y);
+    y += lineHeight;
+    
+    ofDrawBitmapString("Sat Invert: " + ofToString(paramManager->isSaturationInverted()), x, y);
+    y += lineHeight;
+    
+    ofDrawBitmapString("Bright Invert: " + ofToString(paramManager->isBrightnessInverted()), x, y);
+    y += lineHeight;
+    
+    ofDrawBitmapString("Horiz Mirror: " + ofToString(paramManager->isHorizontalMirrorEnabled()), x, y);
+    y += lineHeight;
+    
+    ofDrawBitmapString("Vert Mirror: " + ofToString(paramManager->isVerticalMirrorEnabled()), x, y);
+    y += lineHeight;
 }

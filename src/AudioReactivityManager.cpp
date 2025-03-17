@@ -150,10 +150,11 @@ void AudioReactivityManager::analyzeAudio() {
     }
     
     // Process the spectrum with sensitivity
-    float maxVal = 0.0f;
+    float maxVal = 0.0001f; // Small non-zero value to avoid division by zero
+    
     for (int i = 0; i < spectrumSize; i++) {
-        // Apply high sensitivity and exponential scaling
-        float value = powf(fftResult[i] * sensitivity * 10.0f, 2.0f);
+        // Apply sensitivity and exponential scaling
+        float value = powf(fftResult[i] * sensitivity * 5.0f, 1.5f);
         
         // Track maximum value for normalization
         if (normalizationEnabled) {
@@ -164,21 +165,24 @@ void AudioReactivityManager::analyzeAudio() {
         fftSpectrum[i] = value;
     }
     
-    // If normalization is disabled, use a fixed value instead
-    if (!normalizationEnabled) {
-        maxVal = 1.0f;  // Use raw values without normalization
+    // Use a reasonable default if normalization is disabled
+    if (!normalizationEnabled || maxVal < 0.0001f) {
+        maxVal = 1.0f;
     }
     
     // Normalize (if enabled) and smooth
     for (int i = 0; i < spectrumSize; i++) {
-        // Normalize by max value or use direct value if normalization is disabled
-        float processedValue = (maxVal > 0) ? fftSpectrum[i] / maxVal : 0.0f;
+        // Normalize by max value
+        float processedValue = fftSpectrum[i] / maxVal;
         
-        // More aggressive smoothing with peak detection
-        fftSmoothed[i] = std::max(
-            fftSmoothed[i] * smoothing,  // Decay
-            processedValue * (1.0f - smoothing)  // New value
-        );
+        // Apply smoothing with some peak detection (rise faster than fall)
+        if (processedValue > fftSmoothed[i]) {
+            // Fast attack (rise quickly)
+            fftSmoothed[i] = fftSmoothed[i] * 0.7f + processedValue * 0.3f;
+        } else {
+            // Slow decay (fall slowly) based on smoothing setting
+            fftSmoothed[i] = fftSmoothed[i] * smoothing + processedValue * (1.0f - smoothing);
+        }
     }
 }
 
@@ -224,15 +228,27 @@ void AudioReactivityManager::groupBands() {
 void AudioReactivityManager::applyMappings() {
     for (const auto& mapping : mappings) {
         if (mapping.band >= 0 && mapping.band < numBands) {
-            // Get the audio band value
+            // Get the audio band value (0.0 to 1.0)
             float value = smoothedBands[mapping.band];
             
-            // Scale and constrain to min/max range
-            value = mapping.min + value * mapping.scale * (mapping.max - mapping.min);
-            value = ofClamp(value, mapping.min, mapping.max);
-            
-            // Apply to parameter
-            applyParameterValue(mapping.paramId, value, mapping.additive);
+            if (mapping.additive) {
+                // For additive mappings, transform the 0.0-1.0 range to -1.0...+1.0 range
+                float centeredValue = (value * 2.0f - 1.0f) * mapping.scale;
+                
+                // Scale and clamp to min/max
+                centeredValue = ofClamp(centeredValue, mapping.min, mapping.max);
+                
+                // Apply the delta to the parameter
+                applyParameterValue(mapping.paramId, centeredValue, true);
+            }
+            else {
+                // For non-additive (direct) mappings
+                float scaledValue = mapping.min + value * (mapping.max - mapping.min);
+                float clampedValue = ofClamp(scaledValue, mapping.min, mapping.max);
+                
+                // Set the parameter directly to this value
+                applyParameterValue(mapping.paramId, clampedValue, false);
+            }
         }
     }
 }
@@ -240,8 +256,8 @@ void AudioReactivityManager::applyMappings() {
 void AudioReactivityManager::applyParameterValue(const std::string& paramId, float value, bool additive) {
     if (!paramManager) return;
     
-    // Apply parameter value based on parameter ID
-    if (paramId == "lumakey_value") {
+    // Match parameter IDs to the actual methods in ParameterManager
+    if (paramId == "lumakey_value" || paramId == "lumakeyValue") {
         if (additive) {
             paramManager->setLumakeyValue(paramManager->getLumakeyValue() + value);
         } else {
@@ -276,42 +292,63 @@ void AudioReactivityManager::applyParameterValue(const std::string& paramId, flo
             paramManager->setBrightness(value);
         }
     }
-    else if (paramId == "x_displace") {
+    else if (paramId == "temporal_filter_mix" || paramId == "temporalFilterMix") {
+        if (additive) {
+            paramManager->setTemporalFilterMix(paramManager->getTemporalFilterMix() + value);
+        } else {
+            paramManager->setTemporalFilterMix(value);
+        }
+    }
+    else if (paramId == "temporal_filter_resonance" || paramId == "temporalFilterResonance") {
+        if (additive) {
+            paramManager->setTemporalFilterResonance(paramManager->getTemporalFilterResonance() + value);
+        } else {
+            paramManager->setTemporalFilterResonance(value);
+        }
+    }
+    else if (paramId == "sharpen_amount" || paramId == "sharpenAmount") {
+        if (additive) {
+            paramManager->setSharpenAmount(paramManager->getSharpenAmount() + value);
+        } else {
+            paramManager->setSharpenAmount(value);
+        }
+    }
+    else if (paramId == "x_displace" || paramId == "xDisplace") {
         if (additive) {
             paramManager->setXDisplace(paramManager->getXDisplace() + value);
         } else {
             paramManager->setXDisplace(value);
         }
     }
-    else if (paramId == "y_displace") {
+    else if (paramId == "y_displace" || paramId == "yDisplace") {
         if (additive) {
             paramManager->setYDisplace(paramManager->getYDisplace() + value);
         } else {
             paramManager->setYDisplace(value);
         }
     }
-    else if (paramId == "z_displace") {
+    else if (paramId == "z_displace" || paramId == "zDisplace") {
         if (additive) {
             paramManager->setZDisplace(paramManager->getZDisplace() + value);
         } else {
             paramManager->setZDisplace(value);
         }
     }
-    else if (paramId == "z_frequency") {
+    else if (paramId == "z_frequency" || paramId == "zFrequency") {
         if (additive) {
             paramManager->setZFrequency(paramManager->getZFrequency() + value);
         } else {
             paramManager->setZFrequency(value);
         }
     }
-    else if (paramId == "x_frequency") {
+    else if (paramId == "x_frequency" || paramId == "xFrequency") {
         if (additive) {
             paramManager->setXFrequency(paramManager->getXFrequency() + value);
         } else {
             paramManager->setXFrequency(value);
         }
     }
-    else if (paramId == "y_frequency") {
+    else if (paramId == "y_frequency" || paramId == "yFrequency") {
         if (additive) {
             paramManager->setYFrequency(paramManager->getYFrequency() + value);
         } else {
@@ -325,46 +362,32 @@ void AudioReactivityManager::applyParameterValue(const std::string& paramId, flo
             paramManager->setRotate(value);
         }
     }
-    else if (paramId == "hue_modulation") {
+    else if (paramId == "hue_modulation" || paramId == "hueModulation") {
         if (additive) {
             paramManager->setHueModulation(paramManager->getHueModulation() + value);
         } else {
             paramManager->setHueModulation(value);
         }
     }
-    else if (paramId == "hue_offset") {
+    else if (paramId == "hue_offset" || paramId == "hueOffset") {
         if (additive) {
             paramManager->setHueOffset(paramManager->getHueOffset() + value);
         } else {
             paramManager->setHueOffset(value);
         }
     }
-    else if (paramId == "hue_lfo") {
+    else if (paramId == "hue_lfo" || paramId == "hueLFO") {
         if (additive) {
             paramManager->setHueLFO(paramManager->getHueLFO() + value);
         } else {
             paramManager->setHueLFO(value);
         }
     }
-    else if (paramId == "temporal_filter_mix") {
+    else if (paramId == "delay_amount" || paramId == "delayAmount") {
         if (additive) {
-            paramManager->setTemporalFilterMix(paramManager->getTemporalFilterMix() + value);
+            paramManager->setDelayAmount(paramManager->getDelayAmount() + static_cast<int>(value));
         } else {
-            paramManager->setTemporalFilterMix(value);
-        }
-    }
-    else if (paramId == "temporal_filter_resonance") {
-        if (additive) {
-            paramManager->setTemporalFilterResonance(paramManager->getTemporalFilterResonance() + value);
-        } else {
-            paramManager->setTemporalFilterResonance(value);
-        }
-    }
-    else if (paramId == "sharpen_amount") {
-        if (additive) {
-            paramManager->setSharpenAmount(paramManager->getSharpenAmount() + value);
-        } else {
-            paramManager->setSharpenAmount(value);
+            paramManager->setDelayAmount(static_cast<int>(value));
         }
     }
 }
@@ -453,6 +476,8 @@ void AudioReactivityManager::setupAudioInput() {
     // If we have a selected device, use it
     if (currentDeviceIndex >= 0 && currentDeviceIndex < deviceList.size()) {
         settings.setInDevice(deviceList[currentDeviceIndex]);
+    } else {
+        ofLogWarning("AudioReactivityManager") << "No device selected, using default";
     }
     
     // Configure stream
@@ -463,11 +488,15 @@ void AudioReactivityManager::setupAudioInput() {
     settings.numBuffers = 4;
     settings.setInListener(this);
     
-    // Setup sound stream
-    soundStream.setup(settings);
-    audioInputInitialized = true;
-    
-    ofLogNotice("AudioReactivityManager") << "Audio input initialized with device: " << getCurrentDeviceName();
+    try {
+        // Setup sound stream
+        soundStream.setup(settings);
+        audioInputInitialized = true;
+        ofLogNotice("AudioReactivityManager") << "Audio input initialized with device: " << getCurrentDeviceName();
+    } catch (std::exception& e) {
+        ofLogError("AudioReactivityManager") << "Failed to initialize audio input: " << e.what();
+        audioInputInitialized = false;
+    }
 }
 
 void AudioReactivityManager::closeAudioInput() {

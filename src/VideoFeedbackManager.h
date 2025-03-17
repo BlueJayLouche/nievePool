@@ -36,6 +36,18 @@ public:
     bool isHdmiAspectRatioEnabled() const;
     void setHdmiAspectRatioEnabled(bool enabled);
     
+    // Video device management methods - these need to be PUBLIC
+    void listVideoDevices();
+    std::vector<std::string> getVideoDeviceList() const;
+    int getCurrentVideoDeviceIndex() const;
+    std::string getCurrentVideoDeviceName() const;
+    bool selectVideoDevice(int deviceIndex);
+    bool selectVideoDevice(const std::string& deviceName);
+    
+    // XML settings
+    void saveToXml(ofxXmlSettings& xml) const;
+    void loadFromXml(ofxXmlSettings& xml);
+    
 private:
     // Constants
     static const int DEFAULT_FRAME_BUFFER_LENGTH = 60;
@@ -70,4 +82,8 @@ private:
     // Frame counting and delay management
     unsigned int frameCount = 0;
     int currentFrameIndex = 0;
+    
+    // Video device management
+    std::vector<ofVideoDevice> videoDevices;
+    int currentVideoDeviceIndex = 0;
 };

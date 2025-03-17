@@ -33,6 +33,14 @@ public:
     void drawAudioDebugInfo(int x, int y, int lineHeight); // Added method for audio debugging
     
 private:
+    // App settings from XML
+    int configWidth = 1024;
+    int configHeight = 768;
+    int configFrameRate = 30;
+    
+    void setupDefaultAudioMappings();
+    void resetSettingsFile();
+    
     // Application managers
     std::unique_ptr<ParameterManager> paramManager;
     std::unique_ptr<ShaderManager> shaderManager;
@@ -48,4 +56,16 @@ private:
     // Performance monitoring
     float frameRateHistory[60];
     int frameRateIndex = 0;
+    
+    // Debug UI sections
+    void drawSystemInfo(int x, int y, int lineHeight);
+    void drawPerformanceInfo(int x, int y, int lineHeight);
+    void drawParameterInfo(int x, int y, int lineHeight);
+    void drawVideoInfo(int x, int y, int lineHeight);
+    
+    // Performance monitoring
+    std::deque<float> frameTimeHistory;
+    float lastFrameTime;
+    float averageFrameTime;
+    int frameCounter;
 };
