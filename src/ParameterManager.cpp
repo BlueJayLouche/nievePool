@@ -214,6 +214,14 @@ void ParameterManager::loadFromXml(ofxXmlSettings& xml) {
     rotateLfoAmp = xml.getValue("lfo:rotateLfoAmp", rotateLfoAmp);
     rotateLfoRate = xml.getValue("lfo:rotateLfoRate", rotateLfoRate);
     
+    // Load video settings
+    videoDevicePath = xml.getValue("video:devicePath", videoDevicePath);
+    videoDeviceID = xml.getValue("video:deviceID", videoDeviceID);
+    videoFormat = xml.getValue("video:format", videoFormat);
+    videoWidth = xml.getValue("video:width", videoWidth);
+    videoHeight = xml.getValue("video:height", videoHeight);
+    videoFrameRate = xml.getValue("video:frameRate", videoFrameRate);
+    
     // Load video reactivity parameters
     vLumakeyValue = xml.getValue("videoReactive:vLumakeyValue", vLumakeyValue);
     vMix = xml.getValue("videoReactive:vMix", vMix);
@@ -320,6 +328,14 @@ void ParameterManager::saveToXml(ofxXmlSettings& xml) const {
     xml.setValue("lfo:zLfoRate", zLfoRate);
     xml.setValue("lfo:rotateLfoAmp", rotateLfoAmp);
     xml.setValue("lfo:rotateLfoRate", rotateLfoRate);
+    
+    // Save video settings
+    xml.setValue("video:devicePath", videoDevicePath);
+    xml.setValue("video:deviceID", videoDeviceID);
+    xml.setValue("video:format", videoFormat);
+    xml.setValue("video:width", videoWidth);
+    xml.setValue("video:height", videoHeight);
+    xml.setValue("video:frameRate", videoFrameRate);
     
     // Save video reactivity parameters
     xml.setValue("videoReactive:vLumakeyValue", vLumakeyValue);

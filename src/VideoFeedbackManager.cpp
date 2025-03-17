@@ -141,22 +141,18 @@ bool VideoFeedbackManager::selectVideoDevice(int deviceIndex) {
         return false;
     }
     
-    // Close current camera
-    if (cameraInitialized) {
-        camera.close();
-        cameraInitialized = false;
-    }
-    
-    // Set new device index
+    // Update current device index
     currentVideoDeviceIndex = deviceIndex;
     
-    // Setup camera with new device
-    camera.setDeviceID(videoDevices[deviceIndex].id);
-    camera.setDesiredFrameRate(30);
-    camera.initGrabber(width, height);
-    cameraInitialized = camera.isInitialized();
+    // Update parameter manager with device info
+    if (paramManager) {
+        paramManager->setVideoDeviceID(deviceIndex);
+        paramManager->setVideoDevicePath("/dev/video" + ofToString(deviceIndex)); // This is an approximation for Linux
+    }
     
-    ofLogNotice("VideoFeedbackManager") << "Selected video device: " << getCurrentVideoDeviceName();
+    // Setup camera with the new device
+    setupCamera(width, height);
+    
     return cameraInitialized;
 }
 
@@ -172,37 +168,92 @@ bool VideoFeedbackManager::selectVideoDevice(const std::string& deviceName) {
 }
 
 void VideoFeedbackManager::setupCamera(int width, int height) {
+    // Check if we have valid parameters
+    if (!paramManager) {
+        ofLogError("VideoFeedbackManager") << "No ParameterManager available!";
+        return;
+    }
+    
     this->width = width;
     this->height = height;
     
-    // Initialize camera first
-    camera.setDeviceID(0); // Default to first device initially
-    camera.setDesiredFrameRate(30);
-    camera.initGrabber(width, height);
-    cameraInitialized = camera.isInitialized();
-    
     #ifdef TARGET_LINUX
-        // Common issue: on Raspberry Pi, we need to ensure the format is set correctly
-        if (cameraInitialized) {
-            std::string devicePath = "/dev/video0"; // Default camera path
-            
-            // Try to use v4l2-ctl to force format (more reliable than ioctl calls)
-            std::string cmd = "v4l2-ctl -d " + devicePath +
-                              " --set-fmt-video=width=" + ofToString(width) +
-                              ",height=" + ofToString(height) +
-                              ",pixelformat=YUYV";
-            
-            system(cmd.c_str());
-            ofLogNotice("VideoFeedbackManager") << "Running: " << cmd;
-        }
+    // Force V4L2 backend on Linux
+    setenv("OF_VIDEO_CAPTURE_BACKEND", "v4l2", 1);
     #endif
     
-    // Then list available devices
+    // Use parameters from ParameterManager
+    int deviceID = paramManager->getVideoDeviceID();
+    std::string devicePath = paramManager->getVideoDevicePath();
+    std::string format = paramManager->getVideoFormat();
+    int videoWidth = paramManager->getVideoWidth();
+    int videoHeight = paramManager->getVideoHeight();
+    int fps = paramManager->getVideoFrameRate();
+    
+    // Initialize camera
+    camera.setDeviceID(deviceID);
+    camera.setDesiredFrameRate(fps);
+    
+    bool initSuccess = false;
+    
+    // First try with requested dimensions
+    try {
+        camera.initGrabber(videoWidth, videoHeight);
+        initSuccess = camera.isInitialized();
+    } catch (const std::exception& e) {
+        ofLogError("VideoFeedbackManager") << "Exception initializing camera: " << e.what();
+    }
+    
+    #ifdef TARGET_LINUX
+    // Common issue: on Raspberry Pi, we need to ensure the format is set correctly
+    if (initSuccess) {
+        // Try to use v4l2-ctl to force format (more reliable than ioctl calls)
+        std::string cmd = "v4l2-ctl -d " + devicePath +
+                          " --set-fmt-video=width=" + ofToString(videoWidth) +
+                          ",height=" + ofToString(videoHeight) +
+                          ",pixelformat=" + format;
+        
+        system(cmd.c_str());
+        ofLogNotice("VideoFeedbackManager") << "Running: " << cmd;
+        
+        // Also set framerate
+        cmd = "v4l2-ctl -d " + devicePath + " --set-parm=" + ofToString(fps);
+        system(cmd.c_str());
+        ofLogNotice("VideoFeedbackManager") << "Running: " << cmd;
+    }
+    #endif
+    
+    // If initialization failed, try fallback resolution
+    if (!initSuccess) {
+        ofLogWarning("VideoFeedbackManager") << "First camera init failed, trying 640x480...";
+        try {
+            camera.close();
+            camera.setDeviceID(deviceID);
+            camera.initGrabber(640, 480);
+            initSuccess = camera.isInitialized();
+            
+            // Update parameters with actual dimensions if successful
+            if (initSuccess) {
+                paramManager->setVideoWidth(640);
+                paramManager->setVideoHeight(480);
+            }
+        } catch (const std::exception& e) {
+            ofLogError("VideoFeedbackManager") << "Exception initializing camera with 640x480: " << e.what();
+        }
+    }
+    
+    cameraInitialized = initSuccess;
+    
+    // List available devices
     listVideoDevices();
     
     // If initialization failed, log error
     if (!cameraInitialized) {
         ofLogError("VideoFeedbackManager") << "Failed to initialize camera!";
+    } else {
+        // Update parameter manager with actual dimensions (in case camera selected a different resolution)
+        paramManager->setVideoWidth(camera.getWidth());
+        paramManager->setVideoHeight(camera.getHeight());
     }
 }
 

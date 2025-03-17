@@ -79,6 +79,25 @@ public:
     bool isWetModeEnabled() const;
     void setWetModeEnabled(bool enabled);
     
+    // Video device settings getters/setters
+    std::string getVideoDevicePath() const { return videoDevicePath; }
+    void setVideoDevicePath(const std::string& path) { videoDevicePath = path; }
+
+    int getVideoDeviceID() const { return videoDeviceID; }
+    void setVideoDeviceID(int id) { videoDeviceID = id; }
+
+    std::string getVideoFormat() const { return videoFormat; }
+    void setVideoFormat(const std::string& format) { videoFormat = format; }
+
+    int getVideoWidth() const { return videoWidth; }
+    void setVideoWidth(int width) { videoWidth = width; }
+
+    int getVideoHeight() const { return videoHeight; }
+    void setVideoHeight(int height) { videoHeight = height; }
+
+    int getVideoFrameRate() const { return videoFrameRate; }
+    void setVideoFrameRate(int fps) { videoFrameRate = fps; }
+    
     // Parameter getters/setters
     float getLumakeyValue() const;
     void setLumakeyValue(float value, bool recordable = true);
@@ -238,6 +257,14 @@ private:
     // XML settings
     ofxXmlSettings XML;
     std::string settingsFile = "settings.xml";
+    
+    // Video device settings
+    std::string videoDevicePath = "/dev/video0";  // Default device path
+    int videoDeviceID = 0;                        // Default device ID
+    std::string videoFormat = "YUYV";             // Default format
+    int videoWidth = 640;                         // Default width
+    int videoHeight = 480;                        // Default height
+    int videoFrameRate = 30;                      // Default framerate
     
     // P-Lock system
     bool recordingEnabled = false;
