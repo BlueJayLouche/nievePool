@@ -24,23 +24,22 @@ int main() {
         settings.setGLVersion(3, 2);
         settings.setSize(1024, 768);
         ofLogNotice("main") << "Using OpenGL 3.2 renderer for Windows";
-    #elif defined(TARGET_LINUX)
-        #if defined(__arm__) || defined(__aarch64__)
-            // Linux ARM (e.g. Raspberry Pi)
+    #if defined(TARGET_LINUX) && (defined(__arm__) || defined(__aarch64__))
+        try {
+            // Raspberry Pi - use OpenGL ES2
             ofGLESWindowSettings glesSettings;
             glesSettings.glesVersion = 2;
             glesSettings.setSize(640, 480);
-            ofLogNotice("main") << "Using OpenGL ES2 renderer for Linux ARM";
+            ofLogNotice("main") << "Using OpenGL ES2 renderer for Raspberry Pi";
             auto window = ofCreateWindow(glesSettings);
             ofRunApp(window, make_shared<ofApp>());
             ofRunMainLoop();
             return 0;
-        #else
-            // Linux x86/x64
-            settings.setGLVersion(3, 2);
-            settings.setSize(1024, 768);
-            ofLogNotice("main") << "Using OpenGL 3.2 renderer for Linux";
-        #endif
+        } catch (const std::exception& e) {
+            ofLogError("main") << "Error setting up OpenGL ES2: " << e.what();
+            // Fall back to default OpenGL
+        }
+    #endif
     #else
         // Default fallback
         settings.setGLVersion(2, 1);  // More compatible default
@@ -58,7 +57,7 @@ int main() {
     auto window = ofCreateWindow(settings);
     
     // Make the window resizable after creation
-    ofSetWindowShape(1024, 768);
+    ofSetWindowShape(640, 480);
     ofSetWindowPosition(100, 100);
     ofSetWindowTitle("Video Feedback Studio");
     

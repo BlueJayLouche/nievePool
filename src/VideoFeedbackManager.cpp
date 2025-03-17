@@ -20,11 +20,17 @@ void VideoFeedbackManager::setup(int width, int height) {
 }
 
 void VideoFeedbackManager::update() {
+    // Get performance mode setting
+    bool performanceMode = paramManager->isPerformanceModeEnabled();
+    
     // Update camera input
     updateCamera();
     
-    // Process main video feedback pipeline
-    processMainPipeline();
+    // Only process on certain frames in performance mode
+    if (!performanceMode || frameCount % 2 == 0) {
+        // Process main video feedback pipeline
+        processMainPipeline();
+    }
     
     // Increment frame index for circular buffer
     incrementFrameIndex();
@@ -174,6 +180,22 @@ void VideoFeedbackManager::setupCamera(int width, int height) {
     camera.setDesiredFrameRate(30);
     camera.initGrabber(width, height);
     cameraInitialized = camera.isInitialized();
+    
+    #ifdef TARGET_LINUX
+        // Common issue: on Raspberry Pi, we need to ensure the format is set correctly
+        if (cameraInitialized) {
+            std::string devicePath = "/dev/video0"; // Default camera path
+            
+            // Try to use v4l2-ctl to force format (more reliable than ioctl calls)
+            std::string cmd = "v4l2-ctl -d " + devicePath +
+                              " --set-fmt-video=width=" + ofToString(width) +
+                              ",height=" + ofToString(height) +
+                              ",pixelformat=YUYV";
+            
+            system(cmd.c_str());
+            ofLogNotice("VideoFeedbackManager") << "Running: " << cmd;
+        }
+    #endif
     
     // Then list available devices
     listVideoDevices();

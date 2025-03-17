@@ -26,6 +26,18 @@ public:
     // Utility functions
     std::string getShaderDirectory() const;
     
+    std::string getCompatibilityHeader() const {
+        if (ofIsGLProgrammableRenderer()) {
+            return "#version 150\n#define SAMPLER_FN texture";
+        } else {
+            #ifdef TARGET_OPENGLES
+            return "#version 100\nprecision highp float;\n#define SAMPLER_FN texture2D";
+            #else
+            return "#version 120\n#define SAMPLER_FN texture2D";
+            #endif
+        }
+    }
+    
 private:
     // Shaders
     ofShader mixerShader;      // Main effect mixer shader

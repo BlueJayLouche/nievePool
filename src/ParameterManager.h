@@ -15,6 +15,24 @@ class ParameterManager {
 public:
     ParameterManager();
     
+    // Performance settings
+    bool performanceModeEnabled = false;
+    int performanceScale = 50;     // Reduced resolution when in performance mode
+    int noiseUpdateInterval = 4;   // Update noise every N frames
+    bool highQualityEnabled = true;
+    
+    bool isPerformanceModeEnabled() const { return performanceModeEnabled; }
+    void setPerformanceModeEnabled(bool enabled) { performanceModeEnabled = enabled; }
+    
+    int getPerformanceScale() const { return performanceScale; }
+    void setPerformanceScale(int scale) { performanceScale = scale; }
+    
+    int getNoiseUpdateInterval() const { return noiseUpdateInterval; }
+    void setNoiseUpdateInterval(int interval) { noiseUpdateInterval = interval; }
+    
+    bool isHighQualityEnabled() const { return highQualityEnabled; }
+    void setHighQualityEnabled(bool enabled) { highQualityEnabled = enabled; }
+    
     // Core methods
     void setup();
     void update();

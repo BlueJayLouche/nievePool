@@ -2,7 +2,31 @@
 
 //--------------------------------------------------------------
 void ofApp::setup() {
-    // Check if settings file exists and validate structure
+    // Check for platform-specific settings
+    #if defined(TARGET_LINUX) && (defined(__arm__) || defined(__aarch64__))
+        // Enable performance mode by default on Raspberry Pi
+        bool performanceMode = true;
+        int targetFramerate = 24;
+        ofLogNotice("ofApp") << "Detected Raspberry Pi: enabling performance mode";
+    #else
+        bool performanceMode = false;
+        int targetFramerate = 30;
+    #endif
+    
+    // Set framerate based on platform
+    ofSetFrameRate(targetFramerate);
+    
+    // Continue with normal setup...
+    ofSetVerticalSync(true);
+    ofBackground(0);
+    ofHideCursor();
+    
+    // Initialize parameter manager first
+    paramManager = std::make_unique<ParameterManager>();
+    paramManager->setup();
+    
+    // Set performance mode
+    paramManager->setPerformanceModeEnabled(performanceMode);    // Check if settings file exists and validate structure
     ofFile settingsFile(ofToDataPath("settings.xml"));
     bool resetNeeded = false;
     
