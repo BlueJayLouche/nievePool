@@ -1,0 +1,56 @@
+# OpenFrameworks-specific ignore patterns
+bin/*
+!bin/data/
+obj/
+*.make
+*.xcodeproj
+*.xcconfig
+*.plist
+*.app
+*.o
+*.d
+*.slo
+*.lo
+*.obj
+*.gch
+*.pch
+*.so
+*.dylib
+*.dll
+*.mod
+*.lai
+*.la
+*.a
+*.lib
+*.exe
+*.out
+*.hex
+
+# macOS specific
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows specific
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+*.lnk
+
+# IDE-specific
+.vs/
+.vscode/
+*.swp
+*.swo
+*.user
+
+# Project specific
+build/
+settings.xml
+Makefile
+config.make
+
+# Exceptions
+!bin/data/.gitkeep
+!bin/data/settings.xml.default
