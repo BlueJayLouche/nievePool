@@ -2,7 +2,7 @@
 bin/*
 !bin/data/
 obj/
-*.make
+#*.make
 *.xcodeproj
 *.xcconfig
 *.plist
@@ -48,8 +48,8 @@ Desktop.ini
 # Project specific
 build/
 settings.xml
-Makefile
-config.make
+#Makefile
+#config.make
 
 # Exceptions
 !bin/data/.gitkeep
