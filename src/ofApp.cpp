@@ -7,10 +7,12 @@ void ofApp::setup() {
         // Enable performance mode by default on Raspberry Pi
         bool performanceMode = true;
         int targetFramerate = 24;
+        bool platformIsRaspberryPi = true;
         ofLogNotice("ofApp") << "Detected Raspberry Pi: enabling performance mode";
     #else
         bool performanceMode = false;
         int targetFramerate = 30;
+        bool platformIsRaspberryPi = false;
     #endif
     
     // Set framerate based on platform
@@ -25,8 +27,17 @@ void ofApp::setup() {
     paramManager = std::make_unique<ParameterManager>();
     paramManager->setup();
     
-    // Set performance mode
-    paramManager->setPerformanceModeEnabled(performanceMode);    // Check if settings file exists and validate structure
+    // Set performance mode based on platform
+    if (platformIsRaspberryPi) {
+        paramManager->setPerformanceModeEnabled(true);
+        paramManager->setPerformanceScale(30);  // Lower resolution in performance mode
+        paramManager->setHighQualityEnabled(false);
+        ofSetFrameRate(24);  // Lower framerate for better performance
+    } else {
+        ofSetFrameRate(30);
+    }
+    
+    // Check if settings file exists and validate structure
     ofFile settingsFile(ofToDataPath("settings.xml"));
     bool resetNeeded = false;
     
@@ -236,6 +247,20 @@ void ofApp::update() {
     // Update managers
     paramManager->update();
     midiManager->update();
+    
+    // Debug camera status occasionally
+    static int debugCounter = 0;
+    if (debugEnabled && ++debugCounter % 300 == 0) {
+        if (videoManager->cameraInitialized && videoManager->camera.isInitialized()) {
+            ofLogNotice("ofApp") << "Camera is initialized, dimensions: "
+                               << videoManager->camera.getWidth() << "x"
+                               << videoManager->camera.getHeight();
+            ofLogNotice("ofApp") << "New frame available: "
+                               << (videoManager->camera.isFrameNew() ? "Yes" : "No");
+        } else {
+            ofLogWarning("ofApp") << "Camera NOT initialized";
+        }
+    }
     
     // Only process video at display framerate
     if (frameCounter % 1 == 0) { // Adjust divisor for lower processing rate
@@ -664,6 +689,17 @@ void ofApp::drawDebugInfo() {
     ofDrawBitmapString("Press N to toggle audio normalization", margin, ofGetHeight() - lineHeight);
     
     ofPopStyle();
+    
+    ofPushMatrix();
+    ofTranslate(ofGetWidth() - 220, ofGetHeight() - 180);
+    ofSetColor(255);
+    ofDrawBitmapString("Camera Input:", 0, -15);
+    if (videoManager->getAspectRatioFbo().isAllocated()) {
+        videoManager->getAspectRatioFbo().draw(0, 0, 200, 150);
+    } else {
+        ofDrawBitmapString("No camera FBO", 50, 75);
+    }
+    ofPopMatrix();
 }
 
 void ofApp::drawSystemInfo(int x, int y, int lineHeight) {

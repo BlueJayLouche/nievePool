@@ -42,36 +42,74 @@ void VideoFeedbackManager::draw() {
 }
 
 void VideoFeedbackManager::allocateFbos(int width, int height) {
-    // Allocate main processing FBO
-    mainFbo.allocate(width, height);
-    mainFbo.begin();
-    ofClear(0, 0, 0, 255);
-    mainFbo.end();
+    // Check if we're in performance mode (regardless of platform)
+    bool performanceMode = paramManager ? paramManager->isPerformanceModeEnabled() : false;
+    int fboWidth = width;
+    int fboHeight = height;
     
-    // Allocate aspect ratio correction FBO
-    aspectRatioFbo.allocate(width, height);
-    aspectRatioFbo.begin();
-    ofClear(0, 0, 0, 255);
-    aspectRatioFbo.end();
+    // Reduce resolution in performance mode
+    if (performanceMode) {
+        float aspectRatio = (float)height / width;
+        fboWidth = std::min(width, 640);
+        fboHeight = round(fboWidth * aspectRatio);
+        ofLogNotice("VideoFeedbackManager") << "Performance Mode: Reduced FBO resolution to "
+                                           << fboWidth << "x" << fboHeight;
+    }
     
-    // Allocate dry mode frame buffer
-    dryFrameBuffer.allocate(width, height);
-    dryFrameBuffer.begin();
-    ofClear(0, 0, 0, 255);
-    dryFrameBuffer.end();
+    // Create platform-agnostic FBO settings
+    ofFboSettings settings;
+    settings.width = fboWidth;
+    settings.height = fboHeight;
+    settings.numColorbuffers = 1;
+    settings.useDepth = false;
+    settings.useStencil = false;
+    settings.numSamples = 0;  // No MSAA for compatibility
     
-    // Allocate sharpen effect buffer
-    sharpenFbo.allocate(width, height);
-    sharpenFbo.begin();
-    ofClear(0, 0, 0, 255);
-    sharpenFbo.end();
+    // Use explicit RGB format on Linux, RGBA elsewhere for better compatibility
+#ifdef TARGET_LINUX
+    settings.internalformat = GL_RGB;
+#else
+    settings.internalformat = GL_RGBA8;  // Explicit RGBA8 for macOS/Windows
+#endif
     
-    // Allocate past frames for delay effect
-    for (int i = 0; i < frameBufferLength; i++) {
-        pastFrames[i].allocate(width, height);
-        pastFrames[i].begin();
+    // Allocate FBOs with proper error handling
+    try {
+        // Main processing FBO
+        mainFbo.allocate(settings);
+        mainFbo.begin();
         ofClear(0, 0, 0, 255);
-        pastFrames[i].end();
+        mainFbo.end();
+        
+        // Aspect ratio correction FBO
+        aspectRatioFbo.allocate(settings);
+        aspectRatioFbo.begin();
+        ofClear(0, 0, 0, 255);
+        aspectRatioFbo.end();
+        
+        // Dry mode frame buffer
+        dryFrameBuffer.allocate(settings);
+        dryFrameBuffer.begin();
+        ofClear(0, 0, 0, 255);
+        dryFrameBuffer.end();
+        
+        // Sharpen effect buffer
+        sharpenFbo.allocate(settings);
+        sharpenFbo.begin();
+        ofClear(0, 0, 0, 255);
+        sharpenFbo.end();
+        
+        // Allocate past frames for delay effect
+        for (int i = 0; i < frameBufferLength; i++) {
+            pastFrames[i].allocate(settings);
+            pastFrames[i].begin();
+            ofClear(0, 0, 0, 255);
+            pastFrames[i].end();
+        }
+        
+        ofLogNotice("VideoFeedbackManager") << "FBOs allocated with "
+                                           << fboWidth << "x" << fboHeight << " resolution";
+    } catch (std::exception& e) {
+        ofLogError("VideoFeedbackManager") << "Error allocating FBOs: " << e.what();
     }
 }
 
@@ -141,17 +179,52 @@ bool VideoFeedbackManager::selectVideoDevice(int deviceIndex) {
         return false;
     }
     
+    // Close current camera if needed
+    if (cameraInitialized) {
+        camera.close();
+        cameraInitialized = false;
+    }
+    
     // Update current device index
     currentVideoDeviceIndex = deviceIndex;
     
-    // Update parameter manager with device info
+    // Log selection
+    ofLogNotice("VideoFeedbackManager") << "Selecting video device: "
+                                       << videoDevices[deviceIndex].deviceName;
+    
+    // Update parameter manager
     if (paramManager) {
         paramManager->setVideoDeviceID(deviceIndex);
-        paramManager->setVideoDevicePath("/dev/video" + ofToString(deviceIndex)); // This is an approximation for Linux
     }
     
-    // Setup camera with the new device
-    setupCamera(width, height);
+    // Set device ID and reopen camera
+    camera.setDeviceID(videoDevices[deviceIndex].id);
+    
+    // Get dimensions from parameter manager if available
+    int vidWidth = width;
+    int vidHeight = height;
+    if (paramManager) {
+        vidWidth = paramManager->getVideoWidth();
+        vidHeight = paramManager->getVideoHeight();
+    }
+    
+    // Initialize camera
+    camera.initGrabber(vidWidth, vidHeight);
+    cameraInitialized = camera.isInitialized();
+    
+    // Log result
+    if (cameraInitialized) {
+        ofLogNotice("VideoFeedbackManager") << "Camera initialized successfully: "
+                                           << camera.getWidth() << "x" << camera.getHeight();
+        
+        // Update actual dimensions in parameter manager
+        if (paramManager) {
+            paramManager->setVideoWidth(camera.getWidth());
+            paramManager->setVideoHeight(camera.getHeight());
+        }
+    } else {
+        ofLogError("VideoFeedbackManager") << "Failed to initialize camera";
+    }
     
     return cameraInitialized;
 }
@@ -168,105 +241,126 @@ bool VideoFeedbackManager::selectVideoDevice(const std::string& deviceName) {
 }
 
 void VideoFeedbackManager::setupCamera(int width, int height) {
-    // Check if we have valid parameters
-    if (!paramManager) {
-        ofLogError("VideoFeedbackManager") << "No ParameterManager available!";
-        return;
-    }
-    
     this->width = width;
     this->height = height;
     
-    #ifdef TARGET_LINUX
-    // Force V4L2 backend on Linux
+#ifdef TARGET_LINUX
+    // Raspberry Pi / Linux-specific setup
     setenv("OF_VIDEO_CAPTURE_BACKEND", "v4l2", 1);
-    #endif
+    setenv("GST_DEBUG", "0", 1);
     
-    // Use parameters from ParameterManager
-    int deviceID = paramManager->getVideoDeviceID();
-    std::string devicePath = paramManager->getVideoDevicePath();
-    std::string format = paramManager->getVideoFormat();
-    int videoWidth = paramManager->getVideoWidth();
-    int videoHeight = paramManager->getVideoHeight();
-    int fps = paramManager->getVideoFrameRate();
+    // Get device path from parameter manager or use default
+    std::string devicePath = "/dev/video0";
+    if (paramManager) {
+        devicePath = paramManager->getVideoDevicePath();
+    }
     
+    // Pre-configure v4l2 device
+    ofLogNotice("VideoFeedbackManager") << "Configuring Linux camera: " << devicePath;
+    std::string cmd = "v4l2-ctl -d " + devicePath +
+                      " --set-fmt-video=width=" + ofToString(width) +
+                      ",height=" + ofToString(height) +
+                      ",pixelformat=YUYV";
+    system(cmd.c_str());
+    ofLogNotice("VideoFeedbackManager") << "Running pre-init command: " << cmd;
+#else
+    // macOS/Windows setup - no pre-initialization needed
+    ofLogNotice("VideoFeedbackManager") << "Setting up camera for desktop platform";
+#endif
+
     // Initialize camera
-    camera.setDeviceID(deviceID);
-    camera.setDesiredFrameRate(fps);
+    camera.setDeviceID(0); // Default to first device initially
+    camera.setDesiredFrameRate(30);
+    
+    // Try with different common resolutions
+    std::vector<std::pair<int, int>> resolutions = {
+        {width, height},
+        {640, 480},   // Standard VGA
+        {1280, 720},  // 720p HD
+        {1920, 1080}, // 1080p HD
+        {320, 240}    // QVGA (last resort)
+    };
     
     bool initSuccess = false;
-    
-    // First try with requested dimensions
-    try {
-        camera.initGrabber(videoWidth, videoHeight);
-        initSuccess = camera.isInitialized();
-    } catch (const std::exception& e) {
-        ofLogError("VideoFeedbackManager") << "Exception initializing camera: " << e.what();
-    }
-    
-    #ifdef TARGET_LINUX
-    // Common issue: on Raspberry Pi, we need to ensure the format is set correctly
-    if (initSuccess) {
-        // Try to use v4l2-ctl to force format (more reliable than ioctl calls)
-        std::string cmd = "v4l2-ctl -d " + devicePath +
-                          " --set-fmt-video=width=" + ofToString(videoWidth) +
-                          ",height=" + ofToString(videoHeight) +
-                          ",pixelformat=" + format;
+    for (const auto& res : resolutions) {
+        ofLogNotice("VideoFeedbackManager") << "Trying camera resolution: " << res.first << "x" << res.second;
         
-        system(cmd.c_str());
-        ofLogNotice("VideoFeedbackManager") << "Running: " << cmd;
-        
-        // Also set framerate
-        cmd = "v4l2-ctl -d " + devicePath + " --set-parm=" + ofToString(fps);
-        system(cmd.c_str());
-        ofLogNotice("VideoFeedbackManager") << "Running: " << cmd;
-    }
-    #endif
-    
-    // If initialization failed, try fallback resolution
-    if (!initSuccess) {
-        ofLogWarning("VideoFeedbackManager") << "First camera init failed, trying 640x480...";
         try {
-            camera.close();
-            camera.setDeviceID(deviceID);
-            camera.initGrabber(640, 480);
-            initSuccess = camera.isInitialized();
-            
-            // Update parameters with actual dimensions if successful
-            if (initSuccess) {
-                paramManager->setVideoWidth(640);
-                paramManager->setVideoHeight(480);
+            if (camera.isInitialized()) camera.close();
+            camera.initGrabber(res.first, res.second);
+            if (camera.isInitialized()) {
+                initSuccess = true;
+                ofLogNotice("VideoFeedbackManager") << "Successfully initialized camera at "
+                                                  << res.first << "x" << res.second;
+                break;
             }
         } catch (const std::exception& e) {
-            ofLogError("VideoFeedbackManager") << "Exception initializing camera with 640x480: " << e.what();
+            ofLogError("VideoFeedbackManager") << "Camera init exception: " << e.what();
         }
     }
     
     cameraInitialized = initSuccess;
     
+    // Create fallback image if camera failed
+    if (!cameraInitialized) {
+        ofLogWarning("VideoFeedbackManager") << "Using fallback camera image";
+        ofImage fallbackImg;
+        fallbackImg.allocate(width, height, OF_IMAGE_COLOR);
+        fallbackImg.setColor(ofColor(80, 10, 100)); // Purple fallback
+        fallbackImg.update();
+        
+        // Copy to aspect ratio FBO as fallback
+        aspectRatioFbo.begin();
+        ofClear(0, 0, 0, 255);
+        fallbackImg.draw(0, 0, width, height);
+        aspectRatioFbo.end();
+    }
+    
     // List available devices
     listVideoDevices();
-    
-    // If initialization failed, log error
-    if (!cameraInitialized) {
-        ofLogError("VideoFeedbackManager") << "Failed to initialize camera!";
-    } else {
-        // Update parameter manager with actual dimensions (in case camera selected a different resolution)
-        paramManager->setVideoWidth(camera.getWidth());
-        paramManager->setVideoHeight(camera.getHeight());
-    }
 }
 
 void VideoFeedbackManager::updateCamera() {
     if (cameraInitialized) {
-        camera.update();
-        
-        // If there's a new frame and HD aspect ratio correction is enabled
-        if (camera.isFrameNew() && hdmiAspectRatioEnabled) {
-            aspectRatioFbo.begin();
-            // Corner crop and stretch to preserve HD aspect ratio
-            camera.draw(0, 0, 853, 480);
-            aspectRatioFbo.end();
+        try {
+            // Update the camera with proper error handling
+            camera.update();
+            
+            // If there's a new frame, copy it to our FBO with careful error handling
+            if (camera.isFrameNew()) {
+                ofLogVerbose("VideoFeedbackManager") << "New camera frame available";
+                aspectRatioFbo.begin();
+                ofClear(0, 0, 0, 255);
+                
+                // Make sure dimensions are valid
+                int camWidth = camera.getWidth();
+                int camHeight = camera.getHeight();
+                
+                if (camWidth > 0 && camHeight > 0) {
+                    // Draw using different aspect ratio handling based on settings
+                    if (hdmiAspectRatioEnabled) {
+                        // Use 16:9 aspect ratio correction
+                        camera.draw(0, 0, 853, 480);
+                    } else {
+                        // Use normal dimensions
+                        camera.draw(0, 0, width, height);
+                    }
+                    
+                    // Log successful camera draw (once during development)
+                    static bool firstDraw = true;
+                    if (firstDraw) {
+                        ofLogNotice("VideoFeedbackManager") << "Successfully drew camera frame at "
+                                                           << camWidth << "x" << camHeight;
+                        firstDraw = false;
+                    }
+                } else {
+                    ofLogError("VideoFeedbackManager") << "Invalid camera dimensions: "
+                                                      << camWidth << "x" << camHeight;
+                }
+                aspectRatioFbo.end();
+            }
+        } catch (std::exception& e) {
+            ofLogError("VideoFeedbackManager") << "Error updating camera: " << e.what();
         }
     }
 }
@@ -279,13 +373,46 @@ void VideoFeedbackManager::incrementFrameIndex() {
 void VideoFeedbackManager::processMainPipeline() {
     // Safety checks before processing
     if (!paramManager || !shaderManager) {
-        ofLogError("VideoFeedbackManager") << "Null manager pointers! Cannot process pipeline.";
+        ofLogError("VideoFeedbackManager") << "Missing manager pointers! Cannot process pipeline.";
         return;
     }
     
-    if (!pastFrames) {
-        ofLogError("VideoFeedbackManager") << "Null pastFrames array! Cannot process pipeline.";
+    // Get shader with validation
+    ofShader& mixerShader = shaderManager->getMixerShader();
+    if (!mixerShader.isLoaded()) {
+        ofLogError("VideoFeedbackManager") << "Mixer shader not loaded!";
         return;
+    }
+    
+    // Main processing FBO
+    mainFbo.begin();
+    
+    // Clear background first to avoid artifacts
+    ofClear(0, 0, 0, 255);
+    
+    // Begin shader
+    mixerShader.begin();
+    
+    // Add debug info for video texture
+    static bool textureDebugDone = false;
+    if (!textureDebugDone) {
+        ofLogNotice("VideoFeedbackManager") << "Camera texture available: "
+                                           << (cameraInitialized && camera.isInitialized());
+        ofLogNotice("VideoFeedbackManager") << "aspectRatioFbo allocated: " << aspectRatioFbo.isAllocated();
+        textureDebugDone = true;
+    }
+    
+    // Draw camera input (or aspect corrected version) with camera check
+    if (cameraInitialized && camera.isInitialized() && aspectRatioFbo.isAllocated()) {
+        // Use the aspect-corrected FBO we prepared in updateCamera()
+        aspectRatioFbo.draw(0, 0, mainFbo.getWidth(), mainFbo.getHeight());
+    } else {
+        // Draw fallback if camera not available
+        ofSetColor(50, 0, 0);
+        ofDrawRectangle(0, 0, mainFbo.getWidth(), mainFbo.getHeight());
+        ofSetColor(255, 0, 0);
+        ofDrawBitmapString("Camera not available", mainFbo.getWidth()/2 - 70, mainFbo.getHeight()/2);
+        ofSetColor(255);
     }
     
     // Get parameters with P-lock applied
@@ -346,35 +473,7 @@ void VideoFeedbackManager::processMainPipeline() {
     rotate += 0.314159265f * rotateLfoAmp * sin(ofGetElapsedTimef() * rotateLfoRate);
     
     try {
-        // Main processing FBO
-        mainFbo.begin();
-        
-        // Get mixer shader with safety check
-        ofShader& mixerShader = shaderManager->getMixerShader();
-        if (!mixerShader.isLoaded()) {
-            ofLogError("VideoFeedbackManager") << "Mixer shader not loaded!";
-            mainFbo.end();
-            return;
-        }
-        
-        mixerShader.begin();
-        
-        // Draw camera input (or aspect corrected version) with camera check
-        if (cameraInitialized && camera.isInitialized()) {
-            if (hdmiAspectRatioEnabled) {
-                aspectRatioFbo.draw(0, 0, width, height);
-            } else {
-                camera.draw(0, 0, width, height);
-            }
-        } else {
-            // Draw fallback if camera not available
-            ofSetColor(50, 0, 0);
-            ofDrawRectangle(0, 0, width, height);
-            ofSetColor(255, 0, 0);
-            ofDrawBitmapString("Camera not initialized", width/2 - 70, height/2);
-            ofSetColor(255);
-        }
-        
+        // Send the textures to shader with safety checks
         // Send the textures to shader with safety checks
         if (pastFrames && delayIndex >= 0 && delayIndex < frameBufferLength) {
             mixerShader.setUniformTexture("fb", pastFrames[delayIndex].getTexture(), 1);
@@ -487,7 +586,6 @@ void VideoFeedbackManager::processMainPipeline() {
                 // In wet mode, store the processed output
                 sharpenFbo.draw(0, 0);
             }
-            
             pastFrames[storeIndex].end();
         }
     }

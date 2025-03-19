@@ -28,6 +28,10 @@ public:
     void setupCamera(int width, int height);
     void updateCamera();
     
+    // Camera
+    ofVideoGrabber camera;
+    bool cameraInitialized = false;
+    
     // Get/set for frame buffer size
     int getFrameBufferLength() const;
     void setFrameBufferLength(int length);
@@ -48,6 +52,19 @@ public:
     void saveToXml(ofxXmlSettings& xml) const;
     void loadFromXml(ofxXmlSettings& xml);
     
+    ofFbo& getAspectRatioFbo() { return aspectRatioFbo; }
+    
+    // Additional helpful accessor methods
+    ofFbo& getMainFbo() { return mainFbo; }
+    ofFbo& getSharpenFbo() { return sharpenFbo; }
+    ofFbo& getDryFrameBuffer() { return dryFrameBuffer; }
+    ofFbo& getPastFrame(int index) {
+        if (index >= 0 && index < frameBufferLength) {
+            return pastFrames[index];
+        }
+        return dryFrameBuffer; // Fallback to avoid crashes
+    }
+        
 private:
     // Constants
     static const int DEFAULT_FRAME_BUFFER_LENGTH = 60;
@@ -59,10 +76,6 @@ private:
     // Reference to managers
     ParameterManager* paramManager;
     ShaderManager* shaderManager;
-    
-    // Camera
-    ofVideoGrabber camera;
-    bool cameraInitialized = false;
     
     // Resolution
     int width = 640;
