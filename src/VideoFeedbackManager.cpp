@@ -40,7 +40,7 @@ void VideoFeedbackManager::draw() {
 }
 
 void VideoFeedbackManager::allocateFbos(int width, int height) {
-    // Check if we're in performance mode (regardless of platform)
+    // Check if we're in performance mode
     bool performanceMode = paramManager ? paramManager->isPerformanceModeEnabled() : false;
     int fboWidth = width;
     int fboHeight = height;
@@ -63,12 +63,36 @@ void VideoFeedbackManager::allocateFbos(int width, int height) {
     settings.useStencil = false;
     settings.numSamples = 0;  // No MSAA for compatibility
     
-    // Use explicit RGB format on Linux, RGBA elsewhere for better compatibility
+    // IMPORTANT FIX: Always use RGBA on Raspberry Pi
+    bool isRaspberryPi = false;
 #ifdef TARGET_LINUX
-    settings.internalformat = GL_RGB;
-#else
-    settings.internalformat = GL_RGBA8;  // Explicit RGBA8 for macOS/Windows
+    // Check if we're running on Raspberry Pi
+    FILE* cpuinfo = fopen("/proc/cpuinfo", "r");
+    if (cpuinfo) {
+        char line[256];
+        while (fgets(line, sizeof(line), cpuinfo)) {
+            if (strstr(line, "Raspberry Pi") || strstr(line, "BCM27") || strstr(line, "BCM28")) {
+                isRaspberryPi = true;
+                break;
+            }
+        }
+        fclose(cpuinfo);
+    }
 #endif
+    
+    if (isRaspberryPi) {
+        ofLogNotice("VideoFeedbackManager") << "Raspberry Pi detected, using GL_RGBA8 for better compatibility";
+        settings.internalformat = GL_RGBA8;  // Always use RGBA8 on Pi
+    } else {
+#ifdef TARGET_LINUX
+        settings.internalformat = GL_RGB;
+#else
+        settings.internalformat = GL_RGBA8;
+#endif
+    }
+    
+    ofLogNotice("VideoFeedbackManager") << "Allocating FBOs with format: "
+                                       << (settings.internalformat == GL_RGBA8 ? "GL_RGBA8" : "GL_RGB");
     
     // Allocate FBOs with proper error handling
     try {
@@ -805,6 +829,21 @@ bool VideoFeedbackManager::isHdmiAspectRatioEnabled() const {
 
 void VideoFeedbackManager::setHdmiAspectRatioEnabled(bool enabled) {
     hdmiAspectRatioEnabled = enabled;
+}
+
+void VideoFeedbackManager::checkGLError(const std::string& operation) {
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        std::string errorString;
+        switch (err) {
+            case GL_INVALID_ENUM: errorString = "GL_INVALID_ENUM"; break;
+            case GL_INVALID_VALUE: errorString = "GL_INVALID_VALUE"; break;
+            case GL_INVALID_OPERATION: errorString = "GL_INVALID_OPERATION"; break;
+            case GL_OUT_OF_MEMORY: errorString = "GL_OUT_OF_MEMORY"; break;
+            default: errorString = "Unknown GL error code " + ofToString(err); break;
+        }
+        ofLogError("VideoFeedbackManager") << "OpenGL error after " << operation << ": " << errorString;
+    }
 }
 
 void VideoFeedbackManager::saveToXml(ofxXmlSettings& xml) const {

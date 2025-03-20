@@ -72,6 +72,7 @@ private:
     // Helper methods
     void incrementFrameIndex();
     void processMainPipeline();
+    void checkGLError(const std::string& operation);
     
     // Reference to managers
     ParameterManager* paramManager;
