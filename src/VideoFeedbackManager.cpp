@@ -1,5 +1,8 @@
 #include "VideoFeedbackManager.h"
 #include "V4L2Helper.h"
+#ifdef TARGET_LINUX
+#include <sys/sysinfo.h>
+#endif
 
 VideoFeedbackManager::VideoFeedbackManager(ParameterManager* paramManager, ShaderManager* shaderManager)
     : paramManager(paramManager), shaderManager(shaderManager) {
@@ -32,7 +35,6 @@ void VideoFeedbackManager::setup(int width, int height) {
     clearFbos();
 }
 
-
 void VideoFeedbackManager::allocateFbos(int width, int height) {
     // Check if we're in performance mode
     bool performanceMode = paramManager ? paramManager->isPerformanceModeEnabled() : false;
@@ -40,20 +42,30 @@ void VideoFeedbackManager::allocateFbos(int width, int height) {
     // Get available memory and adjust processing resolution accordingly
     float memoryScaleFactor = 1.0f;
     
-    #if defined(TARGET_LINUX) && (defined(__arm__) || defined(__aarch64__))
-        // Check available memory on Linux/ARM
-        struct sysinfo info;
-        if (sysinfo(&info) == 0) {
-            unsigned long availableRam = info.freeram * info.mem_unit / (1024 * 1024); // in MB
-            if (availableRam < 500) { // Less than 500MB free
-                memoryScaleFactor = 0.5f;
-            } else if (availableRam < 1000) { // Less than 1GB free
-                memoryScaleFactor = 0.75f;
-            }
-        } else {
-            // Fallback conservative value for Raspberry Pi
-            memoryScaleFactor = 0.6f;
-        }
+    #if defined(TARGET_LINUX)
+        // Check available memory on Linux using a safer approach
+        #if defined(__arm__) || defined(__aarch64__)
+            // Default conservative value for Raspberry Pi
+            memoryScaleFactor = 0.7f;
+            
+            // Try to get more accurate memory info if possible
+            #ifdef __linux__
+                // This is the proper way to include sysinfo
+                struct ::sysinfo memInfo;
+                if (::sysinfo(&memInfo) == 0) {
+                    unsigned long availableRam = memInfo.freeram * memInfo.mem_unit / (1024 * 1024); // in MB
+                    ofLogNotice("VideoFeedbackManager") << "Available RAM: " << availableRam << "MB";
+                    
+                    if (availableRam < 500) { // Less than 500MB free
+                        memoryScaleFactor = 0.5f;
+                    } else if (availableRam < 1000) { // Less than 1GB free
+                        memoryScaleFactor = 0.7f;
+                    } else {
+                        memoryScaleFactor = 0.85f;
+                    }
+                }
+            #endif
+        #endif
     #endif
     
     int fboWidth, fboHeight;
@@ -74,18 +86,25 @@ void VideoFeedbackManager::allocateFbos(int width, int height) {
         fboHeight = std::min(height, (int)(height * memoryScaleFactor));
     }
     
-    // Create platform-agnostic FBO settings
-    fboSettings.width = fboWidth;
-    fboSettings.height = fboHeight;
-    fboSettings.numColorbuffers = 1;
-    fboSettings.useDepth = false;
-    fboSettings.useStencil = false;
-    fboSettings.numSamples = 0;  // No MSAA for compatibility
+    ofLogNotice("VideoFeedbackManager") << "Allocating FBOs with resolution: "
+                                      << fboWidth << "x" << fboHeight
+                                      << " (memory scale factor: " << memoryScaleFactor << ")";
     
-    // IMPORTANT FIX: Always use RGBA on Raspberry Pi
+    // Create platform-agnostic FBO settings
+    ofFboSettings settings;
+    settings.width = fboWidth;
+    settings.height = fboHeight;
+    settings.numColorbuffers = 1;
+    settings.useDepth = false;
+    settings.useStencil = false;
+    settings.numSamples = 0;  // No MSAA for compatibility
+    
+    // Store the settings for lazy allocation later
+    fboSettings = settings;
+    
+    // IMPORTANT FIX: Always use RGBA on Raspberry Pi/ARM Linux
     bool isArmLinux = false;
-#ifdef TARGET_LINUX
-    #if defined(__arm__) || defined(__aarch64__)
+    #if defined(TARGET_LINUX) && (defined(__arm__) || defined(__aarch64__))
         isArmLinux = true;
     #else
         // Fallback detection method using /proc/cpuinfo
@@ -102,56 +121,63 @@ void VideoFeedbackManager::allocateFbos(int width, int height) {
             fclose(cpuinfo);
         }
     #endif
-#endif
-
+    
     if (isArmLinux) {
         ofLogNotice("VideoFeedbackManager") << "ARM Linux detected, using GL_RGBA8 for better compatibility";
-        fboSettings.internalformat = GL_RGBA8;  // Always use RGBA8 on ARM Linux
+        settings.internalformat = GL_RGBA8;  // Always use RGBA8 on ARM Linux
     } else {
-#ifdef TARGET_LINUX
-        fboSettings.internalformat = GL_RGB;
-#else
-        fboSettings.internalformat = GL_RGBA8;
-#endif
+        #ifdef TARGET_LINUX
+            settings.internalformat = GL_RGB;
+        #else
+            settings.internalformat = GL_RGBA8;
+        #endif
     }
-
-    ofLogNotice("VideoFeedbackManager") << "Allocating FBOs with format: "
-                                       << (fboSettings.internalformat == GL_RGBA8 ? "GL_RGBA8" : "GL_RGB")
-                                       << " and resolution " << fboWidth << "x" << fboHeight;
     
-    // Allocate the main FBOs with proper error handling
+    ofLogNotice("VideoFeedbackManager") << "Allocating FBOs with format: "
+                                       << (settings.internalformat == GL_RGBA8 ? "GL_RGBA8" : "GL_RGB");
+    
+    // Allocate FBOs with proper error handling
     try {
         // Main processing FBO
-        mainFbo.allocate(fboSettings);
+        mainFbo.allocate(settings);
         mainFbo.begin();
         ofClear(0, 0, 0, 255);
         mainFbo.end();
         
         // Aspect ratio correction FBO
-        aspectRatioFbo.allocate(fboSettings);
+        aspectRatioFbo.allocate(settings);
         aspectRatioFbo.begin();
         ofClear(0, 0, 0, 255);
         aspectRatioFbo.end();
         
         // Dry mode frame buffer
-        dryFrameBuffer.allocate(fboSettings);
+        dryFrameBuffer.allocate(settings);
         dryFrameBuffer.begin();
         ofClear(0, 0, 0, 255);
         dryFrameBuffer.end();
         
         // Sharpen effect buffer
-        sharpenFbo.allocate(fboSettings);
+        sharpenFbo.allocate(settings);
         sharpenFbo.begin();
         ofClear(0, 0, 0, 255);
         sharpenFbo.end();
         
-        // We'll allocate past frames lazily as they're needed
-        for (int i = 0; i < frameBufferLength; i++) {
-            pastFramesAllocated[i] = false;
+        // Initialize allocation tracking
+        if (pastFramesAllocated) {
+            for (int i = 0; i < frameBufferLength; i++) {
+                pastFramesAllocated[i] = false;
+            }
+        }
+        
+        // Pre-allocate just the first few frames that will likely be used
+        int preAllocateCount = std::min(5, frameBufferLength);
+        for (int i = 0; i < preAllocateCount; i++) {
+            allocatePastFrameIfNeeded(i);
         }
         
         ofLogNotice("VideoFeedbackManager") << "Core FBOs allocated with "
-                                           << fboWidth << "x" << fboHeight << " resolution";
+                                           << fboWidth << "x" << fboHeight << " resolution. "
+                                           << "Pre-allocated " << preAllocateCount << " frame buffers.";
     } catch (std::exception& e) {
         ofLogError("VideoFeedbackManager") << "Error allocating FBOs: " << e.what();
     }
