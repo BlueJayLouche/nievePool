@@ -1,7 +1,5 @@
 #include "VideoFeedbackManager.h"
-
-
-
+#include "V4L2Helper.h"
 
 VideoFeedbackManager::VideoFeedbackManager(ParameterManager* paramManager, ShaderManager* shaderManager)
     : paramManager(paramManager), shaderManager(shaderManager) {
