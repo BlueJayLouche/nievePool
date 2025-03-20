@@ -166,7 +166,6 @@ void ofApp::setup() {
     }
 }
 
-
 // Add a helper method for default audio mappings
 void ofApp::setupDefaultAudioMappings() {
     ofLogNotice("ofApp") << "Setting up default audio mappings";
@@ -291,13 +290,139 @@ void ofApp::update() {
 
 //--------------------------------------------------------------
 void ofApp::draw() {
-    // Draw video feedback
-    videoManager->draw();
+    // On Raspberry Pi, we want to show debug info even if rendering fails
+    #if defined(TARGET_LINUX) && (defined(__arm__) || defined(__aarch64__))
+    bool safeDrawMode = true;
+    #else
+    bool safeDrawMode = false;
+    #endif
     
-    // Draw debug info if enabled
-    if (debugEnabled) {
+    if (safeDrawMode) {
+        // Safe draw path for Raspberry Pi
+        try {
+            // Draw video feedback with error handling
+            videoManager->draw();
+        } catch (const std::exception& e) {
+            ofLogError("ofApp") << "Exception in videoManager->draw(): " << e.what();
+            
+            // Draw error message to screen
+            ofBackground(0);
+            ofSetColor(255, 0, 0);
+            ofDrawBitmapString("Render error: " + std::string(e.what()), 20, 20);
+        } catch (...) {
+            ofLogError("ofApp") << "Unknown exception in videoManager->draw()";
+            ofBackground(0);
+            ofSetColor(255, 0, 0);
+            ofDrawBitmapString("Unknown render error", 20, 20);
+        }
+        
+        // Always draw debug info on Raspberry Pi, no matter what
         drawDebugInfo();
+    } else {
+        // Standard draw path for desktop platforms
+        videoManager->draw();
+        
+        // Draw debug info if enabled
+        if (debugEnabled) {
+            drawDebugInfo();
+        }
     }
+}
+
+void ofApp::drawDebugInfo() {
+    ofPushStyle();
+    
+    // Make sure text is visible
+    ofEnableAlphaBlending();
+    
+    // Always draw a minimum indication that debug mode is enabled
+    ofSetColor(255, 255, 0);
+    ofDrawBitmapString("DEBUG MODE", 10, 15);
+    
+    // Layout settings - more compact for Raspberry Pi screens
+    bool isSmallScreen = (ofGetWidth() < 800 || ofGetHeight() < 600);
+    
+    int margin = isSmallScreen ? 5 : 10;
+    int lineHeight = isSmallScreen ? 12 : 15;
+    int columnWidth = isSmallScreen ? (ofGetWidth() / 3 - margin) : (ofGetWidth() / 3 - margin * 2);
+    
+    // Add semi-transparent background behind text for better readability
+    ofSetColor(0, 0, 0, 180);
+    
+    // System info background (top-left)
+    int sysInfoHeight = lineHeight * 6;
+    ofDrawRectangle(margin, margin, columnWidth, sysInfoHeight);
+    
+    // Performance info background (below system info)
+    int perfInfoHeight = lineHeight * 6 + 40; // height + graph
+    ofDrawRectangle(margin, margin + sysInfoHeight + 5, columnWidth, perfInfoHeight);
+    
+    // Parameter info background (middle column)
+    ofDrawRectangle(ofGetWidth() / 3 + margin, margin, columnWidth, ofGetHeight() - margin * 2 - lineHeight * 5);
+    
+    // Audio debug info background (right column)
+    ofDrawRectangle(ofGetWidth() * 2 / 3 + margin, margin, columnWidth, ofGetHeight() - margin * 2 - lineHeight * 5);
+    
+    // Video info background (bottom row)
+    ofDrawRectangle(margin, ofGetHeight() - lineHeight * 6 - margin, ofGetWidth() - margin * 2, lineHeight * 6);
+    
+    // Now draw all the sections with proper coloring
+    drawSystemInfo(margin + 5, margin + 15, lineHeight);
+    drawPerformanceInfo(margin + 5, margin + sysInfoHeight + 20, lineHeight);
+    drawParameterInfo(ofGetWidth() / 3 + margin + 5, margin + 15, lineHeight);
+    drawAudioDebugInfo(ofGetWidth() * 2 / 3 + margin + 5, margin + 15, lineHeight);
+    drawVideoInfo(margin + 5, ofGetHeight() - lineHeight * 5 - margin, lineHeight);
+    
+    // Draw help text at bottom with better visibility
+    ofSetColor(0, 0, 0, 200);
+    ofDrawRectangle(margin, ofGetHeight() - lineHeight * 3, ofGetWidth() - margin * 2, lineHeight * 3);
+    
+    ofSetColor(180, 180, 255);
+    ofDrawBitmapString("Press ` to toggle debug display", margin + 5, ofGetHeight() - lineHeight * 3 + 12);
+    ofDrawBitmapString("Press A to toggle audio reactivity", margin + 5, ofGetHeight() - lineHeight * 2 + 12);
+    ofDrawBitmapString("Press N to toggle audio normalization", margin + 5, ofGetHeight() - lineHeight + 12);
+    
+    ofPopStyle();
+    
+    // Draw camera preview in bottom-right with better error handling
+    ofPushMatrix();
+    ofPushStyle();
+    
+    int previewWidth = 200;
+    int previewHeight = 150;
+    int previewX = ofGetWidth() - previewWidth - 20;
+    int previewY = ofGetHeight() - previewHeight - 20;
+    
+    ofSetColor(0, 0, 0, 200);
+    ofDrawRectangle(previewX - 10, previewY - 25, previewWidth + 20, previewHeight + 35);
+    
+    ofSetColor(255);
+    ofDrawBitmapString("Camera Input:", previewX, previewY - 10);
+    
+    ofTranslate(previewX, previewY);
+    
+    if (videoManager) {
+        // Only attempt to display if camera initialized
+        if (videoManager->cameraInitialized && videoManager->camera.isInitialized()) {
+            ofSetColor(255);
+            videoManager->getAspectRatioFbo().draw(0, 0, previewWidth, previewHeight);
+        } else if (videoManager->getAspectRatioFbo().isAllocated()) {
+            // Draw the fallback pattern/test card
+            ofSetColor(200, 200, 200); // Dimmer to indicate it's not live
+            videoManager->getAspectRatioFbo().draw(0, 0, previewWidth, previewHeight);
+            ofSetColor(255, 0, 0);
+            ofDrawBitmapString("No camera / Fallback", 30, previewHeight/2 + 5);
+        } else {
+            ofSetColor(255, 0, 0);
+            ofDrawBitmapString("Camera FBO not allocated", 30, previewHeight/2);
+        }
+    } else {
+        ofSetColor(255, 0, 0);
+        ofDrawBitmapString("VideoManager not initialized", 10, previewHeight/2);
+    }
+    
+    ofPopStyle();
+    ofPopMatrix();
 }
 
 //--------------------------------------------------------------
@@ -659,49 +784,6 @@ void ofApp::keyReleased(int key) {
 }
 
 //--------------------------------------------------------------
-void ofApp::drawDebugInfo() {
-    ofPushStyle();
-    
-    // Layout settings
-    int margin = 10;
-    int lineHeight = 15;
-    int columnWidth = ofGetWidth() / 3 - margin * 2;
-    
-    // Draw system info in top-left
-    drawSystemInfo(margin, margin, lineHeight);
-    
-    // Draw performance info below system info
-    drawPerformanceInfo(margin, margin + lineHeight * 5, lineHeight);
-    
-    // Draw parameter info in the middle column
-    drawParameterInfo(ofGetWidth() / 3 + margin, margin, lineHeight);
-    
-    // Draw audio debug info in the right column
-    drawAudioDebugInfo(ofGetWidth() * 2 / 3 + margin, margin, lineHeight);
-    
-    // Draw video info at the bottom
-    drawVideoInfo(margin, ofGetHeight() - lineHeight * 6, lineHeight);
-    
-    // Draw help text at bottom
-    ofSetColor(180, 180, 255);
-    ofDrawBitmapString("Press ` to toggle debug display", margin, ofGetHeight() - lineHeight * 3);
-    ofDrawBitmapString("Press A to toggle audio reactivity", margin, ofGetHeight() - lineHeight * 2);
-    ofDrawBitmapString("Press N to toggle audio normalization", margin, ofGetHeight() - lineHeight);
-    
-    ofPopStyle();
-    
-    ofPushMatrix();
-    ofTranslate(ofGetWidth() - 220, ofGetHeight() - 180);
-    ofSetColor(255);
-    ofDrawBitmapString("Camera Input:", 0, -15);
-    if (videoManager->getAspectRatioFbo().isAllocated()) {
-        videoManager->getAspectRatioFbo().draw(0, 0, 200, 150);
-    } else {
-        ofDrawBitmapString("No camera FBO", 50, 75);
-    }
-    ofPopMatrix();
-}
-
 void ofApp::drawSystemInfo(int x, int y, int lineHeight) {
     ofSetColor(255, 255, 0);
     

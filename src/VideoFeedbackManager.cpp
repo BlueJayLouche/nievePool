@@ -244,9 +244,14 @@ void VideoFeedbackManager::setupCamera(int width, int height) {
     this->width = width;
     this->height = height;
     
+    // Log that we're setting up the camera
+    ofLogNotice("VideoFeedbackManager") << "Setting up camera with dimensions: " << width << "x" << height;
+    
 #ifdef TARGET_LINUX
-    // Raspberry Pi / Linux-specific setup
+    // On Raspberry Pi / Linux, ensure we have the correct Video4Linux backends set
     setenv("OF_VIDEO_CAPTURE_BACKEND", "v4l2", 1);
+    
+    // Disable verbose GST logging that might impact performance
     setenv("GST_DEBUG", "0", 1);
     
     // Get device path from parameter manager or use default
@@ -255,47 +260,131 @@ void VideoFeedbackManager::setupCamera(int width, int height) {
         devicePath = paramManager->getVideoDevicePath();
     }
     
-    // Pre-configure v4l2 device
-    ofLogNotice("VideoFeedbackManager") << "Configuring Linux camera: " << devicePath;
-    std::string cmd = "v4l2-ctl -d " + devicePath +
-                      " --set-fmt-video=width=" + ofToString(width) +
-                      ",height=" + ofToString(height) +
-                      ",pixelformat=YUYV";
-    system(cmd.c_str());
-    ofLogNotice("VideoFeedbackManager") << "Running pre-init command: " << cmd;
-#else
-    // macOS/Windows setup - no pre-initialization needed
-    ofLogNotice("VideoFeedbackManager") << "Setting up camera for desktop platform";
-#endif
-
-    // Initialize camera
-    camera.setDeviceID(0); // Default to first device initially
-    camera.setDesiredFrameRate(30);
+    ofLogNotice("VideoFeedbackManager") << "Using device path: " << devicePath;
     
-    // Try with different common resolutions
-    std::vector<std::pair<int, int>> resolutions = {
-        {width, height},
-        {640, 480},   // Standard VGA
-        {1280, 720},  // 720p HD
-        {1920, 1080}, // 1080p HD
-        {320, 240}    // QVGA (last resort)
-    };
+    // Get or list available video formats to choose the most compatible one
+    auto formats = V4L2Helper::listFormats(devicePath);
+    ofLogNotice("VideoFeedbackManager") << "Available formats:";
+    bool hasYUYV = false;
+    for (const auto& format : formats) {
+        ofLogNotice("VideoFeedbackManager") << "  " << format.name << " (" << format.fourcc << ")";
+        if (format.fourcc == "YUYV") {
+            hasYUYV = true;
+        }
+    }
     
-    bool initSuccess = false;
-    for (const auto& res : resolutions) {
-        ofLogNotice("VideoFeedbackManager") << "Trying camera resolution: " << res.first << "x" << res.second;
+    // Force YUYV format for the EM2860 devices - this format is most reliable
+    if (hasYUYV) {
+        ofLogNotice("VideoFeedbackManager") << "Pre-configuring for YUYV format";
         
-        try {
-            if (camera.isInitialized()) camera.close();
-            camera.initGrabber(res.first, res.second);
-            if (camera.isInitialized()) {
-                initSuccess = true;
-                ofLogNotice("VideoFeedbackManager") << "Successfully initialized camera at "
-                                                  << res.first << "x" << res.second;
+        // Try multiple common resolutions for this device, starting with requested dimensions
+        std::vector<std::pair<int, int>> resolutions = {
+            {width, height},    // Requested dimensions
+            {640, 480},         // Standard VGA
+            {720, 576},         // PAL
+            {720, 480},         // NTSC
+            {352, 288},         // CIF
+            {320, 240}          // QVGA (fallback)
+        };
+        
+        bool formatSet = false;
+        for (const auto& res : resolutions) {
+            // Try to set the format via V4L2Helper
+            if (V4L2Helper::setFormat(devicePath, V4L2Helper::formatNameToCode("YUYV"),
+                                     res.first, res.second)) {
+                ofLogNotice("VideoFeedbackManager") << "Successfully set camera format to YUYV "
+                                                   << res.first << "x" << res.second;
+                
+                width = res.first;   // Update dimensions to what was actually set
+                height = res.second;
+                formatSet = true;
                 break;
             }
+        }
+        
+        if (!formatSet) {
+            ofLogWarning("VideoFeedbackManager") << "Failed to set camera format, continuing anyway...";
+        }
+    }
+#endif
+
+    // List available devices before attempting to initialize
+    listVideoDevices();
+    
+    // Set reasonable defaults for camera
+    camera.setDesiredFrameRate(30);
+    
+    // Using the detected device ID
+    int deviceId = 0;
+    if (paramManager) {
+        deviceId = paramManager->getVideoDeviceID();
+    }
+    
+    camera.setDeviceID(deviceId);
+    ofLogNotice("VideoFeedbackManager") << "Setting camera device ID to: " << deviceId;
+    
+    // Try initialize with requested dimensions
+    bool initSuccess = false;
+    
+    // First attempt with clean settings
+    try {
+        if (camera.isInitialized()) camera.close();
+        ofLogNotice("VideoFeedbackManager") << "Initializing camera at " << width << "x" << height;
+        camera.initGrabber(width, height);
+        if (camera.isInitialized()) {
+            initSuccess = true;
+            ofLogNotice("VideoFeedbackManager") << "Successfully initialized camera with dimensions: "
+                                              << camera.getWidth() << "x" << camera.getHeight();
+        }
+    } catch (const std::exception& e) {
+        ofLogError("VideoFeedbackManager") << "Exception initializing camera: " << e.what();
+    }
+    
+    // If first attempt failed, try different resolutions
+    if (!initSuccess) {
+        std::vector<std::pair<int, int>> fallbackResolutions = {
+            {640, 480},   // Standard VGA
+            {720, 576},   // PAL
+            {720, 480},   // NTSC
+            {320, 240},   // QVGA
+            {352, 288},   // CIF
+            {160, 120}    // QQVGA (very low resolution fallback)
+        };
+        
+        for (const auto& res : fallbackResolutions) {
+            try {
+                ofLogNotice("VideoFeedbackManager") << "Trying fallback resolution: " << res.first << "x" << res.second;
+                if (camera.isInitialized()) camera.close();
+                camera.initGrabber(res.first, res.second);
+                
+                if (camera.isInitialized()) {
+                    initSuccess = true;
+                    ofLogNotice("VideoFeedbackManager") << "Successfully initialized camera with fallback dimensions: "
+                                                     << camera.getWidth() << "x" << camera.getHeight();
+                    break;
+                }
+            } catch (const std::exception& e) {
+                ofLogError("VideoFeedbackManager") << "Exception with fallback resolution: " << e.what();
+            }
+        }
+    }
+    
+    // Last resort: try to use ANY available settings
+    if (!initSuccess) {
+        try {
+            ofLogNotice("VideoFeedbackManager") << "Trying initialization with default settings";
+            if (camera.isInitialized()) camera.close();
+            camera.initGrabber(320, 240); // Use smallest common resolution
+            
+            if (camera.isInitialized()) {
+                initSuccess = true;
+                ofLogNotice("VideoFeedbackManager") << "Successfully initialized camera with minimal settings: "
+                                                 << camera.getWidth() << "x" << camera.getHeight();
+            } else {
+                ofLogError("VideoFeedbackManager") << "All camera initialization attempts failed";
+            }
         } catch (const std::exception& e) {
-            ofLogError("VideoFeedbackManager") << "Camera init exception: " << e.what();
+            ofLogError("VideoFeedbackManager") << "Last exception in camera init: " << e.what();
         }
     }
     
@@ -303,10 +392,35 @@ void VideoFeedbackManager::setupCamera(int width, int height) {
     
     // Create fallback image if camera failed
     if (!cameraInitialized) {
-        ofLogWarning("VideoFeedbackManager") << "Using fallback camera image";
+        ofLogWarning("VideoFeedbackManager") << "Creating fallback test pattern since camera initialization failed";
+        
         ofImage fallbackImg;
         fallbackImg.allocate(width, height, OF_IMAGE_COLOR);
-        fallbackImg.setColor(ofColor(80, 10, 100)); // Purple fallback
+        
+        // Create a test pattern (checkerboard)
+        int squareSize = 40;
+        ofPixels& pixels = fallbackImg.getPixels();
+        
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                // Create a checkerboard pattern
+                bool isEvenRow = ((y / squareSize) % 2) == 0;
+                bool isEvenCol = ((x / squareSize) % 2) == 0;
+                
+                if (isEvenRow == isEvenCol) {
+                    pixels.setColor(x, y, ofColor(80, 10, 100)); // Purple
+                } else {
+                    pixels.setColor(x, y, ofColor(10, 80, 100)); // Teal-ish
+                }
+                
+                // Add cross in the middle to show center and orientation
+                if ((x > width/2 - 2 && x < width/2 + 2) ||
+                    (y > height/2 - 2 && y < height/2 + 2)) {
+                    pixels.setColor(x, y, ofColor(255, 0, 0)); // Red cross
+                }
+            }
+        }
+        
         fallbackImg.update();
         
         // Copy to aspect ratio FBO as fallback
@@ -314,10 +428,13 @@ void VideoFeedbackManager::setupCamera(int width, int height) {
         ofClear(0, 0, 0, 255);
         fallbackImg.draw(0, 0, width, height);
         aspectRatioFbo.end();
+    } else {
+        // Update actual dimensions in parameter manager if initialized successfully
+        if (paramManager) {
+            paramManager->setVideoWidth(camera.getWidth());
+            paramManager->setVideoHeight(camera.getHeight());
+        }
     }
-    
-    // List available devices
-    listVideoDevices();
 }
 
 void VideoFeedbackManager::updateCamera() {

@@ -1,0 +1,718 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 54;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		"09434A00-D9AC-4B01-ACE9-87E0D8DA20E7" /* ofxMidiTimecode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = "198C5B3A-B23D-4976-8138-B04006FB2A5E" /* ofxMidiTimecode.cpp */; };
+		"0DBD29AB-9718-4165-85A7-ABD5C8017B61" /* ParameterManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = "D7718052-A047-40E5-A6F9-CCE7B0A6AD29" /* ParameterManager.cpp */; };
+		"11362832-9877-46FD-BECF-2F441C5C8875" /* ofxProcessFFT.cpp in Sources */ = {isa = PBXBuildFile; fileRef = "F06FD57E-A466-45D6-87BD-765D8B5E9081" /* ofxProcessFFT.cpp */; };
+		"12A53E6D-124E-4BA2-8E52-36721F0ACFA3" /* ofxBaseMidi.cpp in Sources */ = {isa = PBXBuildFile; fileRef = "EDCC4A82-F6A3-40E1-92E2-C5FA81699BC0" /* ofxBaseMidi.cpp */; };
+		"1D9B1453-0FCA-46EA-9FDD-125AB85870C6" /* ofxPGMidiContext.mm in Sources */ = {isa = PBXBuildFile; fileRef = "C22A4409-D161-4BB4-9749-DFD51C52C633" /* ofxPGMidiContext.mm */; };
+		"1E4DDF90-648C-447D-A18C-09202FB2623F" /* ofxFftw.cpp in Sources */ = {isa = PBXBuildFile; fileRef = "4E76966C-E20E-4902-8AE0-BD0CA5EED9B4" /* ofxFftw.cpp */; };
+		"23777BAD-6A86-4509-8139-31D4C3D4B0AB" /* ofxMidiClock.cpp in Sources */ = {isa = PBXBuildFile; fileRef = "972DA025-5D08-4086-9699-4E1F58825712" /* ofxMidiClock.cpp */; };
+		"25A9B998-796D-40D0-BFAF-664423CD5F48" /* ofxMidiIn.cpp in Sources */ = {isa = PBXBuildFile; fileRef = "7AE2C9A0-654C-43D2-A597-D59A11CD8801" /* ofxMidiIn.cpp */; };
+		"2EE96054-618F-47C1-881D-94DBEDDBBE73" /* ofxXmlSettings.cpp in Sources */ = {isa = PBXBuildFile; fileRef = "59734958-4CC8-4C06-AEF8-C3C6779B3B87" /* ofxXmlSettings.cpp */; };
+		"500263F4-86E7-4D48-A11A-C1C43254C3D2" /* ofxMidiMessage.cpp in Sources */ = {isa = PBXBuildFile; fileRef = "E08E252E-2C7F-43E3-91CA-D8F7A663C6EE" /* ofxMidiMessage.cpp */; };
+		"5C83FEE7-6A28-466A-9FBA-9DD0B1E58A9A" /* ofxPGMidiIn.mm in Sources */ = {isa = PBXBuildFile; fileRef = "D2D003B5-FDE4-4AA2-A6A5-A001E14C265B" /* ofxPGMidiIn.mm */; };
+		"7998220D-C65C-42CF-B934-C5D962F7878B" /* ofxEasyFft.cpp in Sources */ = {isa = PBXBuildFile; fileRef = "96D86AD9-5CAA-45E6-BD3C-6DFB5B4203BF" /* ofxEasyFft.cpp */; };
+		"809FC540-972E-4B0A-81F4-622F12F5E7AE" /* ofxRtMidiOut.cpp in Sources */ = {isa = PBXBuildFile; fileRef = "5A45153B-E9D2-4E0F-85EE-361C2B53B649" /* ofxRtMidiOut.cpp */; };
+		"844AAE7F-896C-4D90-A07F-F4E681C5B864" /* ofxPGMidiOut.mm in Sources */ = {isa = PBXBuildFile; fileRef = "E2D5CB1D-9090-44AE-9355-8FAF6CF92E24" /* ofxPGMidiOut.mm */; };
+		"85E85C10-904B-4C77-89B9-697C434355D6" /* ofxRtMidiIn.cpp in Sources */ = {isa = PBXBuildFile; fileRef = "D9FE5AD5-3DF6-42EC-BE9B-3F281327D0DA" /* ofxRtMidiIn.cpp */; };
+		"891EBF70-CF54-460E-9083-2F5609A64745" /* RtMidi.cpp in Sources */ = {isa = PBXBuildFile; fileRef = "34DB9F7E-45C1-448C-BA9F-D71F7F5F886D" /* RtMidi.cpp */; };
+		"939E1BBC-E49F-453C-9E33-4EEA2EDDA8F8" /* ofxPGMidiSourceDelegate.mm in Sources */ = {isa = PBXBuildFile; fileRef = "EEBEF5E3-4EA9-46B6-B503-2E52F3E9A506" /* ofxPGMidiSourceDelegate.mm */; };
+		"988ED0E0-8CC0-40CF-AA12-F12AE8E7CE77" /* VideoFeedbackManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = "2117F995-64C0-4618-AB0E-DEBE0716774D" /* VideoFeedbackManager.cpp */; };
+		"988F0277-737D-4E45-83EC-8E82289B72C3" /* tinyxmlparser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = "BABB45BA-EDFB-467D-933F-6EBA2F07EF5A" /* tinyxmlparser.cpp */; };
+		"A6EDF0E3-CAA1-4C63-AD64-7308C3F8DB6C" /* ofxFftAccelerate.cpp in Sources */ = {isa = PBXBuildFile; fileRef = "DB81F66C-07BD-4474-BC06-B0CED66032FC" /* ofxFftAccelerate.cpp */; };
+		"AD8BB91A-A2CD-4DBF-BFB9-482CB143F92F" /* ofxMidiOut.cpp in Sources */ = {isa = PBXBuildFile; fileRef = "58022B19-923A-49C4-B585-5F8A6E4F9292" /* ofxMidiOut.cpp */; };
+		"AF52CB01-F531-4DC0-BF89-CCAF01BB2E5F" /* PGMidiFind.mm in Sources */ = {isa = PBXBuildFile; fileRef = "2A0F4D54-8BB2-45F2-9293-5B0D397B5FE8" /* PGMidiFind.mm */; };
+		"B7AE39FC-EE2F-45FD-A437-F44543C43FD2" /* ofxFftBasic.cpp in Sources */ = {isa = PBXBuildFile; fileRef = "ED21C974-668A-410E-A8EE-6C1590C56E71" /* ofxFftBasic.cpp */; };
+		"BD6DA257-B5A2-4037-B51C-D8DD91184477" /* PGMidi.mm in Sources */ = {isa = PBXBuildFile; fileRef = "9ACFB01C-164F-4E49-B073-5D54255F5920" /* PGMidi.mm */; };
+		"BE40AFFF-4D4D-4A9E-B7B2-730EDAF62C15" /* PGMidiAllSources.mm in Sources */ = {isa = PBXBuildFile; fileRef = "C14D1C27-F310-4FE1-AC52-72FFE1C994EA" /* PGMidiAllSources.mm */; };
+		"D09BB7AB-F265-4493-86AF-A645AE43F832" /* ofxMidi.cpp in Sources */ = {isa = PBXBuildFile; fileRef = "D0267BA7-35BB-4694-A962-8476802A63DE" /* ofxMidi.cpp */; };
+		"D1C920E6-D01A-4AA4-9A29-43517B680F74" /* tinyxml.cpp in Sources */ = {isa = PBXBuildFile; fileRef = "28BE8136-EDDD-442B-A516-0BF633BF0B7A" /* tinyxml.cpp */; };
+		"D5F2FAB5-03BD-43BA-BC9F-CEC2BDC611B3" /* MidiManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = "D87050C4-BB61-4DAC-9497-4C2E9A989613" /* MidiManager.cpp */; };
+		"D9C7EF2E-E0D9-41CC-AB66-53A17B1CBD97" /* kiss_fft_wrapper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = "C8160EF2-62E2-4E21-BDC6-C51381361B63" /* kiss_fft_wrapper.cpp */; };
+		"DD9E13C8-FD6E-4858-9823-700853ABFD16" /* ofxPGMidiDelegate.mm in Sources */ = {isa = PBXBuildFile; fileRef = "EC45AB4A-0596-48BD-BC15-688BD771998D" /* ofxPGMidiDelegate.mm */; };
+		DE98F8B02D883B56004CEF7F /* CoreMIDI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DE98F8AF2D883B56004CEF7F /* CoreMIDI.framework */; };
+		"DECE84B0-5A5D-426C-B44B-F95A47CF650E" /* kiss_fftr.c in Sources */ = {isa = PBXBuildFile; fileRef = "7D8A54C4-FE08-4486-B39F-A05A1CDB778B" /* kiss_fftr.c */; };
+		E4B69E200A3A1BDC003C02F2 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E4B69E1D0A3A1BDC003C02F2 /* main.cpp */; };
+		E4B69E210A3A1BDC003C02F2 /* ofApp.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E4B69E1E0A3A1BDC003C02F2 /* ofApp.cpp */; };
+		"EB586B87-0C84-40A4-98C3-F7C3E598B1FA" /* kiss_fft.c in Sources */ = {isa = PBXBuildFile; fileRef = "E436692C-2F9F-442B-A415-571370E9CD76" /* kiss_fft.c */; };
+		"EE59A8CE-EEDF-4D02-AFB1-8D13B99637D8" /* AudioReactivityManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = "5B02DE31-CD4B-4AEB-8E66-3744DED71ECF" /* AudioReactivityManager.cpp */; };
+		"EFE1EA2F-65AE-474B-94A8-7DC5921D0ECA" /* Accelerate.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = "B28D44FD-6096-4076-BED7-15511E0667F6" /* Accelerate.framework */; };
+		"F68C3A0A-0B39-4035-848A-FD33F84AFEFE" /* ShaderManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = "679920D0-04BA-4A7B-B826-D3581EDD5AD3" /* ShaderManager.cpp */; };
+		"F9355AE2-ADA6-4DEA-AE7A-6D4CB9E97409" /* tinyxmlerror.cpp in Sources */ = {isa = PBXBuildFile; fileRef = "6C7789E6-E20C-4307-88A4-CBE954E7213E" /* tinyxmlerror.cpp */; };
+		"FC7A5A91-9E69-486C-AACC-E329B156E8B2" /* ofxFft.cpp in Sources */ = {isa = PBXBuildFile; fileRef = "C6F19CEB-5FCC-4E09-8B0D-C89911D893D8" /* ofxFft.cpp */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		E4A5B60F29BAAAE400C2D356 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 6;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E4C2427710CC5ABF004149E2 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		"091F8B42-F04F-468A-A08C-6801F8188F8F" /* ofxMidiTimecode.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = ofxMidiTimecode.h; path = ../../../addons/ofxMidi/src/ofxMidiTimecode.h; sourceTree = SOURCE_ROOT; };
+		"0DE2766D-43A6-4606-A004-D1D004065666" /* PGArc.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = PGArc.h; path = ../../../addons/ofxMidi/libs/pgmidi/PGArc.h; sourceTree = SOURCE_ROOT; };
+		191CD6FA2847E21E0085CBB6 /* of.entitlements */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.entitlements; path = of.entitlements; sourceTree = "<group>"; };
+		191EF70929D778A400F35F26 /* openFrameworks */ = {isa = PBXFileReference; lastKnownFileType = folder; name = openFrameworks; path = ../../../libs/openFrameworks; sourceTree = SOURCE_ROOT; };
+		"198C5B3A-B23D-4976-8138-B04006FB2A5E" /* ofxMidiTimecode.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = ofxMidiTimecode.cpp; path = ../../../addons/ofxMidi/src/ofxMidiTimecode.cpp; sourceTree = SOURCE_ROOT; };
+		"1EE7403F-651F-4A18-93D4-22D4D2099964" /* ofxBaseMidi.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = ofxBaseMidi.h; path = ../../../addons/ofxMidi/src/ofxBaseMidi.h; sourceTree = SOURCE_ROOT; };
+		"1FF375A7-B66D-4BC4-A17E-86955D965431" /* ofxFftw.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = ofxFftw.h; path = ../../../addons/ofxFft/src/ofxFftw.h; sourceTree = SOURCE_ROOT; };
+		"2117F995-64C0-4618-AB0E-DEBE0716774D" /* VideoFeedbackManager.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = VideoFeedbackManager.cpp; path = src/VideoFeedbackManager.cpp; sourceTree = SOURCE_ROOT; };
+		"28BE8136-EDDD-442B-A516-0BF633BF0B7A" /* tinyxml.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = tinyxml.cpp; path = ../../../addons/ofxXmlSettings/libs/tinyxml.cpp; sourceTree = SOURCE_ROOT; };
+		"2A0F4D54-8BB2-45F2-9293-5B0D397B5FE8" /* PGMidiFind.mm */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; name = PGMidiFind.mm; path = ../../../addons/ofxMidi/libs/pgmidi/PGMidiFind.mm; sourceTree = SOURCE_ROOT; };
+		"2CA35B62-D915-47F0-8337-CB47C981C736" /* ofxRtMidiIn.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = ofxRtMidiIn.h; path = ../../../addons/ofxMidi/src/desktop/ofxRtMidiIn.h; sourceTree = SOURCE_ROOT; };
+		"34DB9F7E-45C1-448C-BA9F-D71F7F5F886D" /* RtMidi.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = RtMidi.cpp; path = ../../../addons/ofxMidi/libs/rtmidi/RtMidi.cpp; sourceTree = SOURCE_ROOT; };
+		"3CF48C1E-03F2-4A3F-9285-869D011075B8" /* ofxMidiConstants.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = ofxMidiConstants.h; path = ../../../addons/ofxMidi/src/ofxMidiConstants.h; sourceTree = SOURCE_ROOT; };
+		"3FD19373-E4AB-4133-AA8B-EB329D1C3155" /* ofxRtMidiOut.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = ofxRtMidiOut.h; path = ../../../addons/ofxMidi/src/desktop/ofxRtMidiOut.h; sourceTree = SOURCE_ROOT; };
+		"40C7DD5A-CF88-49BE-8F94-C92849144B52" /* ofxMidiOut.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = ofxMidiOut.h; path = ../../../addons/ofxMidi/src/ofxMidiOut.h; sourceTree = SOURCE_ROOT; };
+		"47CA37F6-FED9-4D0D-BE30-B63D1EE48A90" /* ofxMidiIn.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = ofxMidiIn.h; path = ../../../addons/ofxMidi/src/ofxMidiIn.h; sourceTree = SOURCE_ROOT; };
+		"4E76966C-E20E-4902-8AE0-BD0CA5EED9B4" /* ofxFftw.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = ofxFftw.cpp; path = ../../../addons/ofxFft/src/ofxFftw.cpp; sourceTree = SOURCE_ROOT; };
+		"5158A355-5918-481B-AB24-B2B1CE780880" /* kiss_fft.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = kiss_fft.h; path = ../../../addons/ofxFft/libs/kiss/kiss_fft.h; sourceTree = SOURCE_ROOT; };
+		"53F566DD-D27F-4BBD-A6FA-BAFA14428206" /* _kiss_fft_guts.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = _kiss_fft_guts.h; path = ../../../addons/ofxFft/libs/kiss/_kiss_fft_guts.h; sourceTree = SOURCE_ROOT; };
+		"5554DEA3-E329-45BC-BE48-74217E732932" /* RtMidi.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = RtMidi.h; path = ../../../addons/ofxMidi/libs/rtmidi/RtMidi.h; sourceTree = SOURCE_ROOT; };
+		"58022B19-923A-49C4-B585-5F8A6E4F9292" /* ofxMidiOut.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = ofxMidiOut.cpp; path = ../../../addons/ofxMidi/src/ofxMidiOut.cpp; sourceTree = SOURCE_ROOT; };
+		"59734958-4CC8-4C06-AEF8-C3C6779B3B87" /* ofxXmlSettings.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = ofxXmlSettings.cpp; path = ../../../addons/ofxXmlSettings/src/ofxXmlSettings.cpp; sourceTree = SOURCE_ROOT; };
+		"5A45153B-E9D2-4E0F-85EE-361C2B53B649" /* ofxRtMidiOut.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = ofxRtMidiOut.cpp; path = ../../../addons/ofxMidi/src/desktop/ofxRtMidiOut.cpp; sourceTree = SOURCE_ROOT; };
+		"5AC58C04-05D7-4A11-9E5B-3936ACCB21FE" /* ofxXmlSettings.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = ofxXmlSettings.h; path = ../../../addons/ofxXmlSettings/src/ofxXmlSettings.h; sourceTree = SOURCE_ROOT; };
+		"5B02DE31-CD4B-4AEB-8E66-3744DED71ECF" /* AudioReactivityManager.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = AudioReactivityManager.cpp; path = src/AudioReactivityManager.cpp; sourceTree = SOURCE_ROOT; };
+		"5B3D7133-47EF-44CB-9540-C0BE004059E3" /* ofxEasyFft.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = ofxEasyFft.h; path = ../../../addons/ofxFft/src/ofxEasyFft.h; sourceTree = SOURCE_ROOT; };
+		"5EC1757B-7428-4B8E-B22E-B48863AFAF44" /* AudioReactivityManager.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = AudioReactivityManager.h; path = src/AudioReactivityManager.h; sourceTree = SOURCE_ROOT; };
+		"62D49168-F5D1-497E-9EA0-D8DCB606124B" /* ofxPGMidiOut.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = ofxPGMidiOut.h; path = ../../../addons/ofxMidi/src/ios/ofxPGMidiOut.h; sourceTree = SOURCE_ROOT; };
+		"679920D0-04BA-4A7B-B826-D3581EDD5AD3" /* ShaderManager.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = ShaderManager.cpp; path = src/ShaderManager.cpp; sourceTree = SOURCE_ROOT; };
+		"6C7789E6-E20C-4307-88A4-CBE954E7213E" /* tinyxmlerror.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = tinyxmlerror.cpp; path = ../../../addons/ofxXmlSettings/libs/tinyxmlerror.cpp; sourceTree = SOURCE_ROOT; };
+		"73EE5990-580F-41C3-95FD-04E238E8F07F" /* ofxFftBasic.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = ofxFftBasic.h; path = ../../../addons/ofxFft/src/ofxFftBasic.h; sourceTree = SOURCE_ROOT; };
+		"755C78EF-AD59-4F06-A5D4-F84C9318D9F4" /* ofxFft.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = ofxFft.h; path = ../../../addons/ofxFft/src/ofxFft.h; sourceTree = SOURCE_ROOT; };
+		"7AE2C9A0-654C-43D2-A597-D59A11CD8801" /* ofxMidiIn.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = ofxMidiIn.cpp; path = ../../../addons/ofxMidi/src/ofxMidiIn.cpp; sourceTree = SOURCE_ROOT; };
+		"7AFD14EC-9296-42D4-834E-A8C26AC11ADB" /* fftw3.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = fftw3.h; path = ../../../addons/ofxFft/libs/fftw/include/fftw3.h; sourceTree = SOURCE_ROOT; };
+		"7D8A54C4-FE08-4486-B39F-A05A1CDB778B" /* kiss_fftr.c */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.c; fileEncoding = 4; name = kiss_fftr.c; path = ../../../addons/ofxFft/libs/kiss/kiss_fftr.c; sourceTree = SOURCE_ROOT; };
+		"7FC5B4D2-C9BE-4E7A-B387-71175ABB5860" /* ParameterManager.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = ParameterManager.h; path = src/ParameterManager.h; sourceTree = SOURCE_ROOT; };
+		"8501176F-ED88-4FBA-9821-4BA2FA442722" /* ofxMidi.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = ofxMidi.h; path = ../../../addons/ofxMidi/src/ofxMidi.h; sourceTree = SOURCE_ROOT; };
+		"8812ED93-115B-46F7-B4D9-D12127587F1E" /* PGMidi.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = PGMidi.h; path = ../../../addons/ofxMidi/libs/pgmidi/PGMidi.h; sourceTree = SOURCE_ROOT; };
+		"8A5E2887-7CA0-49DE-ADF0-1F63131D2A9B" /* ofxFftAccelerate.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = ofxFftAccelerate.h; path = ../../../addons/ofxFft/src/ofxFftAccelerate.h; sourceTree = SOURCE_ROOT; };
+		"96D86AD9-5CAA-45E6-BD3C-6DFB5B4203BF" /* ofxEasyFft.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = ofxEasyFft.cpp; path = ../../../addons/ofxFft/src/ofxEasyFft.cpp; sourceTree = SOURCE_ROOT; };
+		"972DA025-5D08-4086-9699-4E1F58825712" /* ofxMidiClock.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = ofxMidiClock.cpp; path = ../../../addons/ofxMidi/src/ofxMidiClock.cpp; sourceTree = SOURCE_ROOT; };
+		"98EA1215-F008-4778-A9B2-1B73C1AA4A62" /* PGMidiAllSources.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = PGMidiAllSources.h; path = ../../../addons/ofxMidi/libs/pgmidi/PGMidiAllSources.h; sourceTree = SOURCE_ROOT; };
+		"9ACFB01C-164F-4E49-B073-5D54255F5920" /* PGMidi.mm */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; name = PGMidi.mm; path = ../../../addons/ofxMidi/libs/pgmidi/PGMidi.mm; sourceTree = SOURCE_ROOT; };
+		"9FB048E7-CB33-4F3E-A15D-EE06D881F9E2" /* iOSVersionDetection.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = iOSVersionDetection.h; path = ../../../addons/ofxMidi/libs/pgmidi/iOSVersionDetection.h; sourceTree = SOURCE_ROOT; };
+		"A016575E-91B8-48CC-BE99-0C632FF597C1" /* kiss_fftr.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = kiss_fftr.h; path = ../../../addons/ofxFft/libs/kiss/kiss_fftr.h; sourceTree = SOURCE_ROOT; };
+		"A61371D5-9141-45F7-8AED-10C8C9965FB5" /* ofxFftwKiss.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = ofxFftwKiss.h; path = ../../../addons/ofxFft/src/ofxFftwKiss.h; sourceTree = SOURCE_ROOT; };
+		"AA582366-C740-413F-93FF-778263C654F2" /* ofxPGMidiSourceDelegate.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = ofxPGMidiSourceDelegate.h; path = ../../../addons/ofxMidi/src/ios/ofxPGMidiSourceDelegate.h; sourceTree = SOURCE_ROOT; };
+		"AA6BC118-9201-470D-B761-AEFF7B0801C1" /* ShaderManager.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = ShaderManager.h; path = src/ShaderManager.h; sourceTree = SOURCE_ROOT; };
+		"B28D44FD-6096-4076-BED7-15511E0667F6" /* Accelerate.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Accelerate.framework; path = /System/Library/Frameworks/Accelerate.framework; sourceTree = SOURCE_ROOT; };
+		"B3EA4726-9E44-4319-B4C5-B6F027F53F2C" /* ofxMidiClock.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = ofxMidiClock.h; path = ../../../addons/ofxMidi/src/ofxMidiClock.h; sourceTree = SOURCE_ROOT; };
+		"B7837683-3DA8-43AB-8799-E415A087E22F" /* ofxMidiMessage.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = ofxMidiMessage.h; path = ../../../addons/ofxMidi/src/ofxMidiMessage.h; sourceTree = SOURCE_ROOT; };
+		"BABB45BA-EDFB-467D-933F-6EBA2F07EF5A" /* tinyxmlparser.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = tinyxmlparser.cpp; path = ../../../addons/ofxXmlSettings/libs/tinyxmlparser.cpp; sourceTree = SOURCE_ROOT; };
+		"C14D1C27-F310-4FE1-AC52-72FFE1C994EA" /* PGMidiAllSources.mm */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; name = PGMidiAllSources.mm; path = ../../../addons/ofxMidi/libs/pgmidi/PGMidiAllSources.mm; sourceTree = SOURCE_ROOT; };
+		"C22A4409-D161-4BB4-9749-DFD51C52C633" /* ofxPGMidiContext.mm */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; name = ofxPGMidiContext.mm; path = ../../../addons/ofxMidi/src/ios/ofxPGMidiContext.mm; sourceTree = SOURCE_ROOT; };
+		"C57B917E-41DF-4C1F-A52B-5F3237F48E0D" /* ofxProcessFFT.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = ofxProcessFFT.h; path = ../../../addons/ofxFft/src/ofxProcessFFT.h; sourceTree = SOURCE_ROOT; };
+		"C6F19CEB-5FCC-4E09-8B0D-C89911D893D8" /* ofxFft.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = ofxFft.cpp; path = ../../../addons/ofxFft/src/ofxFft.cpp; sourceTree = SOURCE_ROOT; };
+		"C8160EF2-62E2-4E21-BDC6-C51381361B63" /* kiss_fft_wrapper.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = kiss_fft_wrapper.cpp; path = ../../../addons/ofxFft/src/kiss_fft_wrapper.cpp; sourceTree = SOURCE_ROOT; };
+		"D0267BA7-35BB-4694-A962-8476802A63DE" /* ofxMidi.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = ofxMidi.cpp; path = ../../../addons/ofxMidi/src/ofxMidi.cpp; sourceTree = SOURCE_ROOT; };
+		"D2D003B5-FDE4-4AA2-A6A5-A001E14C265B" /* ofxPGMidiIn.mm */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; name = ofxPGMidiIn.mm; path = ../../../addons/ofxMidi/src/ios/ofxPGMidiIn.mm; sourceTree = SOURCE_ROOT; };
+		"D7718052-A047-40E5-A6F9-CCE7B0A6AD29" /* ParameterManager.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = ParameterManager.cpp; path = src/ParameterManager.cpp; sourceTree = SOURCE_ROOT; };
+		"D87050C4-BB61-4DAC-9497-4C2E9A989613" /* MidiManager.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = MidiManager.cpp; path = src/MidiManager.cpp; sourceTree = SOURCE_ROOT; };
+		"D9FE5AD5-3DF6-42EC-BE9B-3F281327D0DA" /* ofxRtMidiIn.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = ofxRtMidiIn.cpp; path = ../../../addons/ofxMidi/src/desktop/ofxRtMidiIn.cpp; sourceTree = SOURCE_ROOT; };
+		"DB81F66C-07BD-4474-BC06-B0CED66032FC" /* ofxFftAccelerate.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = ofxFftAccelerate.cpp; path = ../../../addons/ofxFft/src/ofxFftAccelerate.cpp; sourceTree = SOURCE_ROOT; };
+		DE98F8AF2D883B56004CEF7F /* CoreMIDI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMIDI.framework; path = System/Library/Frameworks/CoreMIDI.framework; sourceTree = SDKROOT; };
+		"E08E252E-2C7F-43E3-91CA-D8F7A663C6EE" /* ofxMidiMessage.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = ofxMidiMessage.cpp; path = ../../../addons/ofxMidi/src/ofxMidiMessage.cpp; sourceTree = SOURCE_ROOT; };
+		"E2D5CB1D-9090-44AE-9355-8FAF6CF92E24" /* ofxPGMidiOut.mm */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; name = ofxPGMidiOut.mm; path = ../../../addons/ofxMidi/src/ios/ofxPGMidiOut.mm; sourceTree = SOURCE_ROOT; };
+		"E436692C-2F9F-442B-A415-571370E9CD76" /* kiss_fft.c */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.c; fileEncoding = 4; name = kiss_fft.c; path = ../../../addons/ofxFft/libs/kiss/kiss_fft.c; sourceTree = SOURCE_ROOT; };
+		E4B69B5B0A3A1756003C02F2 /* nievePoolDebug.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = nievePoolDebug.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E4B69E1D0A3A1BDC003C02F2 /* main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = main.cpp; path = src/main.cpp; sourceTree = SOURCE_ROOT; };
+		E4B69E1E0A3A1BDC003C02F2 /* ofApp.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = ofApp.cpp; path = src/ofApp.cpp; sourceTree = SOURCE_ROOT; };
+		E4B69E1F0A3A1BDC003C02F2 /* ofApp.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ofApp.h; path = src/ofApp.h; sourceTree = SOURCE_ROOT; };
+		E4B6FCAD0C3E899E008CF71C /* openFrameworks-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "openFrameworks-Info.plist"; sourceTree = "<group>"; };
+		E4EB6923138AFD0F00A09F29 /* Project.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = Project.xcconfig; sourceTree = "<group>"; };
+		"EB00AC47-6BC7-4747-9E02-052D70BC85B3" /* MidiManager.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = MidiManager.h; path = src/MidiManager.h; sourceTree = SOURCE_ROOT; };
+		"EC45AB4A-0596-48BD-BC15-688BD771998D" /* ofxPGMidiDelegate.mm */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; name = ofxPGMidiDelegate.mm; path = ../../../addons/ofxMidi/src/ios/ofxPGMidiDelegate.mm; sourceTree = SOURCE_ROOT; };
+		"ED21C974-668A-410E-A8EE-6C1590C56E71" /* ofxFftBasic.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = ofxFftBasic.cpp; path = ../../../addons/ofxFft/src/ofxFftBasic.cpp; sourceTree = SOURCE_ROOT; };
+		"EDCC4A82-F6A3-40E1-92E2-C5FA81699BC0" /* ofxBaseMidi.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = ofxBaseMidi.cpp; path = ../../../addons/ofxMidi/src/ofxBaseMidi.cpp; sourceTree = SOURCE_ROOT; };
+		"EEBEF5E3-4EA9-46B6-B503-2E52F3E9A506" /* ofxPGMidiSourceDelegate.mm */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; name = ofxPGMidiSourceDelegate.mm; path = ../../../addons/ofxMidi/src/ios/ofxPGMidiSourceDelegate.mm; sourceTree = SOURCE_ROOT; };
+		"EFFF1202-0873-4B70-97A4-7BA5124B7264" /* ofxPGMidiIn.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = ofxPGMidiIn.h; path = ../../../addons/ofxMidi/src/ios/ofxPGMidiIn.h; sourceTree = SOURCE_ROOT; };
+		"F06FD57E-A466-45D6-87BD-765D8B5E9081" /* ofxProcessFFT.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = ofxProcessFFT.cpp; path = ../../../addons/ofxFft/src/ofxProcessFFT.cpp; sourceTree = SOURCE_ROOT; };
+		"F0DEE327-FDE2-4ACE-A017-EB30DFA6F293" /* PGMidiFind.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = PGMidiFind.h; path = ../../../addons/ofxMidi/libs/pgmidi/PGMidiFind.h; sourceTree = SOURCE_ROOT; };
+		"F4CC5FB5-9391-4EF7-88DE-7F0F67B094D5" /* VideoFeedbackManager.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = VideoFeedbackManager.h; path = src/VideoFeedbackManager.h; sourceTree = SOURCE_ROOT; };
+		"F77BE469-2DCF-49D1-8E8B-98CE065A6F83" /* ofxPGMidiContext.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = ofxPGMidiContext.h; path = ../../../addons/ofxMidi/src/ios/ofxPGMidiContext.h; sourceTree = SOURCE_ROOT; };
+		"FBAFBA6B-F4FC-4875-A473-A1A0A7FB7985" /* ofxPGMidiDelegate.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = ofxPGMidiDelegate.h; path = ../../../addons/ofxMidi/src/ios/ofxPGMidiDelegate.h; sourceTree = SOURCE_ROOT; };
+		"FEC861B0-3DF5-431A-AE65-8185DC68BE14" /* tinyxml.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = tinyxml.h; path = ../../../addons/ofxXmlSettings/libs/tinyxml.h; sourceTree = SOURCE_ROOT; };
+		"FEDA3EA6-4E97-43E8-A46A-9E7C454E350D" /* ofxMidiTypes.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = ofxMidiTypes.h; path = ../../../addons/ofxMidi/src/ofxMidiTypes.h; sourceTree = SOURCE_ROOT; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		E4B69B590A3A1756003C02F2 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DE98F8B02D883B56004CEF7F /* CoreMIDI.framework in Frameworks */,
+				"EFE1EA2F-65AE-474B-94A8-7DC5921D0ECA" /* Accelerate.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		"001D7458-7E84-4A76-8B26-7E7EE35EAD91" /* ofxFft */ = {
+			isa = PBXGroup;
+			children = (
+				"E091C0E2-3DD3-4C4D-B46F-3D477D227336" /* libs */,
+				"8AA79EC6-4637-4119-9292-F00D50726DA7" /* src */,
+				"2CC5DE8B-B4CD-41F6-89B2-2390262C763F" /* frameworks */,
+			);
+			name = ofxFft;
+			path = ../../../addons/ofxFft;
+			sourceTree = SOURCE_ROOT;
+		};
+		"1719BC93-984D-4A4B-9019-E18E313EAAC3" /* ofxMidi */ = {
+			isa = PBXGroup;
+			children = (
+				"FCD59C9F-5D0B-4C7B-8E8D-E934945E3940" /* libs */,
+				"2DA267D7-F4EA-434A-B799-47A5C83B0B98" /* src */,
+			);
+			name = ofxMidi;
+			path = ../../../addons/ofxMidi;
+			sourceTree = SOURCE_ROOT;
+		};
+		"2CC5DE8B-B4CD-41F6-89B2-2390262C763F" /* frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				"B28D44FD-6096-4076-BED7-15511E0667F6" /* Accelerate.framework */,
+			);
+			name = frameworks;
+			sourceTree = SOURCE_ROOT;
+		};
+		"2DA267D7-F4EA-434A-B799-47A5C83B0B98" /* src */ = {
+			isa = PBXGroup;
+			children = (
+				"4FDB27FE-8AB0-4746-8680-688026C5C374" /* desktop */,
+				"5996235E-FA57-4033-9F3A-F1E5F4180E57" /* ios */,
+				"EDCC4A82-F6A3-40E1-92E2-C5FA81699BC0" /* ofxBaseMidi.cpp */,
+				"1EE7403F-651F-4A18-93D4-22D4D2099964" /* ofxBaseMidi.h */,
+				"D0267BA7-35BB-4694-A962-8476802A63DE" /* ofxMidi.cpp */,
+				"8501176F-ED88-4FBA-9821-4BA2FA442722" /* ofxMidi.h */,
+				"972DA025-5D08-4086-9699-4E1F58825712" /* ofxMidiClock.cpp */,
+				"B3EA4726-9E44-4319-B4C5-B6F027F53F2C" /* ofxMidiClock.h */,
+				"3CF48C1E-03F2-4A3F-9285-869D011075B8" /* ofxMidiConstants.h */,
+				"7AE2C9A0-654C-43D2-A597-D59A11CD8801" /* ofxMidiIn.cpp */,
+				"47CA37F6-FED9-4D0D-BE30-B63D1EE48A90" /* ofxMidiIn.h */,
+				"E08E252E-2C7F-43E3-91CA-D8F7A663C6EE" /* ofxMidiMessage.cpp */,
+				"B7837683-3DA8-43AB-8799-E415A087E22F" /* ofxMidiMessage.h */,
+				"58022B19-923A-49C4-B585-5F8A6E4F9292" /* ofxMidiOut.cpp */,
+				"40C7DD5A-CF88-49BE-8F94-C92849144B52" /* ofxMidiOut.h */,
+				"198C5B3A-B23D-4976-8138-B04006FB2A5E" /* ofxMidiTimecode.cpp */,
+				"091F8B42-F04F-468A-A08C-6801F8188F8F" /* ofxMidiTimecode.h */,
+				"FEDA3EA6-4E97-43E8-A46A-9E7C454E350D" /* ofxMidiTypes.h */,
+			);
+			name = src;
+			path = ../../../addons/ofxMidi/src;
+			sourceTree = SOURCE_ROOT;
+		};
+		"44380C1A-3645-4A48-BC9F-91BC12166367" /* rtmidi */ = {
+			isa = PBXGroup;
+			children = (
+				"34DB9F7E-45C1-448C-BA9F-D71F7F5F886D" /* RtMidi.cpp */,
+				"5554DEA3-E329-45BC-BE48-74217E732932" /* RtMidi.h */,
+			);
+			name = rtmidi;
+			path = ../../../addons/ofxMidi/libs/rtmidi;
+			sourceTree = SOURCE_ROOT;
+		};
+		"4F13F82E-F11F-4031-811C-877C8683B22E" /* kiss */ = {
+			isa = PBXGroup;
+			children = (
+				"53F566DD-D27F-4BBD-A6FA-BAFA14428206" /* _kiss_fft_guts.h */,
+				"E436692C-2F9F-442B-A415-571370E9CD76" /* kiss_fft.c */,
+				"5158A355-5918-481B-AB24-B2B1CE780880" /* kiss_fft.h */,
+				"7D8A54C4-FE08-4486-B39F-A05A1CDB778B" /* kiss_fftr.c */,
+				"A016575E-91B8-48CC-BE99-0C632FF597C1" /* kiss_fftr.h */,
+			);
+			name = kiss;
+			path = ../../../addons/ofxFft/libs/kiss;
+			sourceTree = SOURCE_ROOT;
+		};
+		"4FDB27FE-8AB0-4746-8680-688026C5C374" /* desktop */ = {
+			isa = PBXGroup;
+			children = (
+				"D9FE5AD5-3DF6-42EC-BE9B-3F281327D0DA" /* ofxRtMidiIn.cpp */,
+				"2CA35B62-D915-47F0-8337-CB47C981C736" /* ofxRtMidiIn.h */,
+				"5A45153B-E9D2-4E0F-85EE-361C2B53B649" /* ofxRtMidiOut.cpp */,
+				"3FD19373-E4AB-4133-AA8B-EB329D1C3155" /* ofxRtMidiOut.h */,
+			);
+			name = desktop;
+			path = ../../../addons/ofxMidi/src/desktop;
+			sourceTree = SOURCE_ROOT;
+		};
+		"5996235E-FA57-4033-9F3A-F1E5F4180E57" /* ios */ = {
+			isa = PBXGroup;
+			children = (
+				"F77BE469-2DCF-49D1-8E8B-98CE065A6F83" /* ofxPGMidiContext.h */,
+				"C22A4409-D161-4BB4-9749-DFD51C52C633" /* ofxPGMidiContext.mm */,
+				"FBAFBA6B-F4FC-4875-A473-A1A0A7FB7985" /* ofxPGMidiDelegate.h */,
+				"EC45AB4A-0596-48BD-BC15-688BD771998D" /* ofxPGMidiDelegate.mm */,
+				"EFFF1202-0873-4B70-97A4-7BA5124B7264" /* ofxPGMidiIn.h */,
+				"D2D003B5-FDE4-4AA2-A6A5-A001E14C265B" /* ofxPGMidiIn.mm */,
+				"62D49168-F5D1-497E-9EA0-D8DCB606124B" /* ofxPGMidiOut.h */,
+				"E2D5CB1D-9090-44AE-9355-8FAF6CF92E24" /* ofxPGMidiOut.mm */,
+				"AA582366-C740-413F-93FF-778263C654F2" /* ofxPGMidiSourceDelegate.h */,
+				"EEBEF5E3-4EA9-46B6-B503-2E52F3E9A506" /* ofxPGMidiSourceDelegate.mm */,
+			);
+			name = ios;
+			path = ../../../addons/ofxMidi/src/ios;
+			sourceTree = SOURCE_ROOT;
+		};
+		"5FB7A0C3-0058-4B64-B702-F994210E6970" /* src */ = {
+			isa = PBXGroup;
+			children = (
+				"59734958-4CC8-4C06-AEF8-C3C6779B3B87" /* ofxXmlSettings.cpp */,
+				"5AC58C04-05D7-4A11-9E5B-3936ACCB21FE" /* ofxXmlSettings.h */,
+			);
+			name = src;
+			path = ../../../addons/ofxXmlSettings/src;
+			sourceTree = SOURCE_ROOT;
+		};
+		"6528F053-45B6-4720-9226-2038D5106A44" /* ofxXmlSettings */ = {
+			isa = PBXGroup;
+			children = (
+				"B757CBB9-7EB8-40B6-BB41-686F30E8B16B" /* libs */,
+				"5FB7A0C3-0058-4B64-B702-F994210E6970" /* src */,
+			);
+			name = ofxXmlSettings;
+			path = ../../../addons/ofxXmlSettings;
+			sourceTree = SOURCE_ROOT;
+		};
+		"7C40F669-FCB1-4ABA-B9A3-909C88CE6886" /* fftw */ = {
+			isa = PBXGroup;
+			children = (
+				"B62F5FBF-323C-415A-92E0-027B139FB2F6" /* include */,
+			);
+			name = fftw;
+			path = ../../../addons/ofxFft/libs/fftw;
+			sourceTree = SOURCE_ROOT;
+		};
+		"8AA79EC6-4637-4119-9292-F00D50726DA7" /* src */ = {
+			isa = PBXGroup;
+			children = (
+				"C8160EF2-62E2-4E21-BDC6-C51381361B63" /* kiss_fft_wrapper.cpp */,
+				"96D86AD9-5CAA-45E6-BD3C-6DFB5B4203BF" /* ofxEasyFft.cpp */,
+				"5B3D7133-47EF-44CB-9540-C0BE004059E3" /* ofxEasyFft.h */,
+				"C6F19CEB-5FCC-4E09-8B0D-C89911D893D8" /* ofxFft.cpp */,
+				"755C78EF-AD59-4F06-A5D4-F84C9318D9F4" /* ofxFft.h */,
+				"DB81F66C-07BD-4474-BC06-B0CED66032FC" /* ofxFftAccelerate.cpp */,
+				"8A5E2887-7CA0-49DE-ADF0-1F63131D2A9B" /* ofxFftAccelerate.h */,
+				"ED21C974-668A-410E-A8EE-6C1590C56E71" /* ofxFftBasic.cpp */,
+				"73EE5990-580F-41C3-95FD-04E238E8F07F" /* ofxFftBasic.h */,
+				"4E76966C-E20E-4902-8AE0-BD0CA5EED9B4" /* ofxFftw.cpp */,
+				"1FF375A7-B66D-4BC4-A17E-86955D965431" /* ofxFftw.h */,
+				"A61371D5-9141-45F7-8AED-10C8C9965FB5" /* ofxFftwKiss.h */,
+				"F06FD57E-A466-45D6-87BD-765D8B5E9081" /* ofxProcessFFT.cpp */,
+				"C57B917E-41DF-4C1F-A52B-5F3237F48E0D" /* ofxProcessFFT.h */,
+			);
+			name = src;
+			path = ../../../addons/ofxFft/src;
+			sourceTree = SOURCE_ROOT;
+		};
+		"B62F5FBF-323C-415A-92E0-027B139FB2F6" /* include */ = {
+			isa = PBXGroup;
+			children = (
+				"7AFD14EC-9296-42D4-834E-A8C26AC11ADB" /* fftw3.h */,
+			);
+			name = include;
+			path = ../../../addons/ofxFft/libs/fftw/include;
+			sourceTree = SOURCE_ROOT;
+		};
+		"B757CBB9-7EB8-40B6-BB41-686F30E8B16B" /* libs */ = {
+			isa = PBXGroup;
+			children = (
+				"28BE8136-EDDD-442B-A516-0BF633BF0B7A" /* tinyxml.cpp */,
+				"FEC861B0-3DF5-431A-AE65-8185DC68BE14" /* tinyxml.h */,
+				"6C7789E6-E20C-4307-88A4-CBE954E7213E" /* tinyxmlerror.cpp */,
+				"BABB45BA-EDFB-467D-933F-6EBA2F07EF5A" /* tinyxmlparser.cpp */,
+			);
+			name = libs;
+			path = ../../../addons/ofxXmlSettings/libs;
+			sourceTree = SOURCE_ROOT;
+		};
+		BB4B014C10F69532006C3DED /* addons */ = {
+			isa = PBXGroup;
+			children = (
+				"001D7458-7E84-4A76-8B26-7E7EE35EAD91" /* ofxFft */,
+				"1719BC93-984D-4A4B-9019-E18E313EAAC3" /* ofxMidi */,
+				"6528F053-45B6-4720-9226-2038D5106A44" /* ofxXmlSettings */,
+			);
+			name = addons;
+			path = ../../../addons;
+			sourceTree = "<group>";
+		};
+		"CFCD91D0-47D7-46D7-9B60-9F1E009EE31D" /* pgmidi */ = {
+			isa = PBXGroup;
+			children = (
+				"0DE2766D-43A6-4606-A004-D1D004065666" /* PGArc.h */,
+				"8812ED93-115B-46F7-B4D9-D12127587F1E" /* PGMidi.h */,
+				"9ACFB01C-164F-4E49-B073-5D54255F5920" /* PGMidi.mm */,
+				"98EA1215-F008-4778-A9B2-1B73C1AA4A62" /* PGMidiAllSources.h */,
+				"C14D1C27-F310-4FE1-AC52-72FFE1C994EA" /* PGMidiAllSources.mm */,
+				"F0DEE327-FDE2-4ACE-A017-EB30DFA6F293" /* PGMidiFind.h */,
+				"2A0F4D54-8BB2-45F2-9293-5B0D397B5FE8" /* PGMidiFind.mm */,
+				"9FB048E7-CB33-4F3E-A15D-EE06D881F9E2" /* iOSVersionDetection.h */,
+			);
+			name = pgmidi;
+			path = ../../../addons/ofxMidi/libs/pgmidi;
+			sourceTree = SOURCE_ROOT;
+		};
+		DE98F8AE2D883B55004CEF7F /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				DE98F8AF2D883B56004CEF7F /* CoreMIDI.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		"E091C0E2-3DD3-4C4D-B46F-3D477D227336" /* libs */ = {
+			isa = PBXGroup;
+			children = (
+				"7C40F669-FCB1-4ABA-B9A3-909C88CE6886" /* fftw */,
+				"4F13F82E-F11F-4031-811C-877C8683B22E" /* kiss */,
+			);
+			name = libs;
+			path = ../../../addons/ofxFft/libs;
+			sourceTree = SOURCE_ROOT;
+		};
+		E4B69B4A0A3A1720003C02F2 = {
+			isa = PBXGroup;
+			children = (
+				191CD6FA2847E21E0085CBB6 /* of.entitlements */,
+				E4B6FCAD0C3E899E008CF71C /* openFrameworks-Info.plist */,
+				E4EB6923138AFD0F00A09F29 /* Project.xcconfig */,
+				E4B69E1C0A3A1BDC003C02F2 /* src */,
+				191EF70929D778A400F35F26 /* openFrameworks */,
+				BB4B014C10F69532006C3DED /* addons */,
+				E4B69B5B0A3A1756003C02F2 /* nievePoolDebug.app */,
+				DE98F8AE2D883B55004CEF7F /* Frameworks */,
+			);
+			sourceTree = "<group>";
+		};
+		E4B69E1C0A3A1BDC003C02F2 /* src */ = {
+			isa = PBXGroup;
+			children = (
+				E4B69E1D0A3A1BDC003C02F2 /* main.cpp */,
+				E4B69E1E0A3A1BDC003C02F2 /* ofApp.cpp */,
+				E4B69E1F0A3A1BDC003C02F2 /* ofApp.h */,
+				"5B02DE31-CD4B-4AEB-8E66-3744DED71ECF" /* AudioReactivityManager.cpp */,
+				"5EC1757B-7428-4B8E-B22E-B48863AFAF44" /* AudioReactivityManager.h */,
+				"D87050C4-BB61-4DAC-9497-4C2E9A989613" /* MidiManager.cpp */,
+				"EB00AC47-6BC7-4747-9E02-052D70BC85B3" /* MidiManager.h */,
+				"D7718052-A047-40E5-A6F9-CCE7B0A6AD29" /* ParameterManager.cpp */,
+				"7FC5B4D2-C9BE-4E7A-B387-71175ABB5860" /* ParameterManager.h */,
+				"679920D0-04BA-4A7B-B826-D3581EDD5AD3" /* ShaderManager.cpp */,
+				"AA6BC118-9201-470D-B761-AEFF7B0801C1" /* ShaderManager.h */,
+				"2117F995-64C0-4618-AB0E-DEBE0716774D" /* VideoFeedbackManager.cpp */,
+				"F4CC5FB5-9391-4EF7-88DE-7F0F67B094D5" /* VideoFeedbackManager.h */,
+			);
+			path = src;
+			sourceTree = SOURCE_ROOT;
+		};
+		"FCD59C9F-5D0B-4C7B-8E8D-E934945E3940" /* libs */ = {
+			isa = PBXGroup;
+			children = (
+				"CFCD91D0-47D7-46D7-9B60-9F1E009EE31D" /* pgmidi */,
+				"44380C1A-3645-4A48-BC9F-91BC12166367" /* rtmidi */,
+			);
+			name = libs;
+			path = ../../../addons/ofxMidi/libs;
+			sourceTree = SOURCE_ROOT;
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		E4B69B5A0A3A1756003C02F2 /* nievePool */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E4B69B5F0A3A1757003C02F2 /* Build configuration list for PBXNativeTarget "nievePool" */;
+			buildPhases = (
+				E42962A92163ECCD00A6A9E2 /* Run Script — Compile OF */,
+				E4B69B580A3A1756003C02F2 /* Sources */,
+				E4B69B590A3A1756003C02F2 /* Frameworks */,
+				E4C2427710CC5ABF004149E2 /* CopyFiles */,
+				E4A5B60F29BAAAE400C2D356 /* CopyFiles */,
+				19B789C429E5AB4A0082E9B8 /* ShellScript */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = nievePool;
+			productName = myOFApp;
+			productReference = E4B69B5B0A3A1756003C02F2 /* nievePoolDebug.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		E4B69B4C0A3A1720003C02F2 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 0600;
+			};
+			buildConfigurationList = E4B69B4D0A3A1720003C02F2 /* Build configuration list for PBXProject "nievePool" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = E4B69B4A0A3A1720003C02F2;
+			productRefGroup = E4B69B4A0A3A1720003C02F2;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				E4B69B5A0A3A1756003C02F2 /* nievePool */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		19B789C429E5AB4A0082E9B8 /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"$OF_PATH/scripts/osx/xcode_project.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		E42962A92163ECCD00A6A9E2 /* Run Script — Compile OF */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Run Script — Compile OF";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "echo \"💾 Compiling Openframeworks\"\nxcodebuild -project \"$OF_PATH/libs/openFrameworksCompiled/project/osx/openFrameworksLib.xcodeproj\" -target openFrameworks -configuration \"${CONFIGURATION}\"  CLANG_CXX_LANGUAGE_STANDARD=$CLANG_CXX_LANGUAGE_STANDARD MACOSX_DEPLOYMENT_TARGET=$MACOSX_DEPLOYMENT_TARGET GCC_PREPROCESSOR_DEFINITIONS=$USER_PREPROCESSOR_DEFINITIONS\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		E4B69B580A3A1756003C02F2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E4B69E200A3A1BDC003C02F2 /* main.cpp in Sources */,
+				E4B69E210A3A1BDC003C02F2 /* ofApp.cpp in Sources */,
+				"EE59A8CE-EEDF-4D02-AFB1-8D13B99637D8" /* AudioReactivityManager.cpp in Sources */,
+				"D5F2FAB5-03BD-43BA-BC9F-CEC2BDC611B3" /* MidiManager.cpp in Sources */,
+				"0DBD29AB-9718-4165-85A7-ABD5C8017B61" /* ParameterManager.cpp in Sources */,
+				"F68C3A0A-0B39-4035-848A-FD33F84AFEFE" /* ShaderManager.cpp in Sources */,
+				"988ED0E0-8CC0-40CF-AA12-F12AE8E7CE77" /* VideoFeedbackManager.cpp in Sources */,
+				"EB586B87-0C84-40A4-98C3-F7C3E598B1FA" /* kiss_fft.c in Sources */,
+				"DECE84B0-5A5D-426C-B44B-F95A47CF650E" /* kiss_fftr.c in Sources */,
+				"D9C7EF2E-E0D9-41CC-AB66-53A17B1CBD97" /* kiss_fft_wrapper.cpp in Sources */,
+				"7998220D-C65C-42CF-B934-C5D962F7878B" /* ofxEasyFft.cpp in Sources */,
+				"FC7A5A91-9E69-486C-AACC-E329B156E8B2" /* ofxFft.cpp in Sources */,
+				"A6EDF0E3-CAA1-4C63-AD64-7308C3F8DB6C" /* ofxFftAccelerate.cpp in Sources */,
+				"B7AE39FC-EE2F-45FD-A437-F44543C43FD2" /* ofxFftBasic.cpp in Sources */,
+				"1E4DDF90-648C-447D-A18C-09202FB2623F" /* ofxFftw.cpp in Sources */,
+				"11362832-9877-46FD-BECF-2F441C5C8875" /* ofxProcessFFT.cpp in Sources */,
+				"BD6DA257-B5A2-4037-B51C-D8DD91184477" /* PGMidi.mm in Sources */,
+				"BE40AFFF-4D4D-4A9E-B7B2-730EDAF62C15" /* PGMidiAllSources.mm in Sources */,
+				"AF52CB01-F531-4DC0-BF89-CCAF01BB2E5F" /* PGMidiFind.mm in Sources */,
+				"891EBF70-CF54-460E-9083-2F5609A64745" /* RtMidi.cpp in Sources */,
+				"85E85C10-904B-4C77-89B9-697C434355D6" /* ofxRtMidiIn.cpp in Sources */,
+				"809FC540-972E-4B0A-81F4-622F12F5E7AE" /* ofxRtMidiOut.cpp in Sources */,
+				"1D9B1453-0FCA-46EA-9FDD-125AB85870C6" /* ofxPGMidiContext.mm in Sources */,
+				"DD9E13C8-FD6E-4858-9823-700853ABFD16" /* ofxPGMidiDelegate.mm in Sources */,
+				"5C83FEE7-6A28-466A-9FBA-9DD0B1E58A9A" /* ofxPGMidiIn.mm in Sources */,
+				"844AAE7F-896C-4D90-A07F-F4E681C5B864" /* ofxPGMidiOut.mm in Sources */,
+				"939E1BBC-E49F-453C-9E33-4EEA2EDDA8F8" /* ofxPGMidiSourceDelegate.mm in Sources */,
+				"12A53E6D-124E-4BA2-8E52-36721F0ACFA3" /* ofxBaseMidi.cpp in Sources */,
+				"D09BB7AB-F265-4493-86AF-A645AE43F832" /* ofxMidi.cpp in Sources */,
+				"23777BAD-6A86-4509-8139-31D4C3D4B0AB" /* ofxMidiClock.cpp in Sources */,
+				"25A9B998-796D-40D0-BFAF-664423CD5F48" /* ofxMidiIn.cpp in Sources */,
+				"500263F4-86E7-4D48-A11A-C1C43254C3D2" /* ofxMidiMessage.cpp in Sources */,
+				"AD8BB91A-A2CD-4DBF-BFB9-482CB143F92F" /* ofxMidiOut.cpp in Sources */,
+				"09434A00-D9AC-4B01-ACE9-87E0D8DA20E7" /* ofxMidiTimecode.cpp in Sources */,
+				"D1C920E6-D01A-4AA4-9A29-43517B680F74" /* tinyxml.cpp in Sources */,
+				"F9355AE2-ADA6-4DEA-AE7A-6D4CB9E97409" /* tinyxmlerror.cpp in Sources */,
+				"988F0277-737D-4E45-83EC-8E82289B72C3" /* tinyxmlparser.cpp in Sources */,
+				"2EE96054-618F-47C1-881D-94DBEDDBBE73" /* ofxXmlSettings.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		E4B69B4E0A3A1720003C02F2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = E4EB6923138AFD0F00A09F29 /* Project.xcconfig */;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = of.entitlements;
+				COPY_PHASE_STRIP = NO;
+				ENABLE_TESTABILITY = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_WARN_UNUSED_VARIABLE = NO;
+				HEADER_SEARCH_PATHS = (
+					"$(OF_CORE_HEADERS)",
+					src,
+				);
+				OTHER_CPLUSPLUSFLAGS = "-D__MACOSX_CORE__";
+			};
+			name = Debug;
+		};
+		E4B69B4F0A3A1720003C02F2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = E4EB6923138AFD0F00A09F29 /* Project.xcconfig */;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = of.entitlements;
+				COPY_PHASE_STRIP = YES;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_UNROLL_LOOPS = YES;
+				HEADER_SEARCH_PATHS = (
+					"$(OF_CORE_HEADERS)",
+					src,
+				);
+				OTHER_CPLUSPLUSFLAGS = "-D__MACOSX_CORE__";
+			};
+			name = Release;
+		};
+		E4B69B600A3A1757003C02F2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = E4EB6923138AFD0F00A09F29 /* Project.xcconfig */;
+			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD)";
+				COPY_PHASE_STRIP = NO;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					/System/Library/Frameworks,
+				);
+				GCC_DYNAMIC_NO_PIC = NO;
+				HEADER_SEARCH_PATHS = (
+					"$(OF_CORE_HEADERS)",
+					src,
+					src,
+					../../../addons/ofxFft/libs,
+					../../../addons/ofxFft/libs/fftw,
+					../../../addons/ofxFft/libs/fftw/include,
+					../../../addons/ofxFft/libs/fftw/lib,
+					../../../addons/ofxFft/libs/kiss,
+					../../../addons/ofxFft/src,
+					../../../addons/ofxMidi/libs,
+					../../../addons/ofxMidi/libs/pgmidi,
+					../../../addons/ofxMidi/libs/rtmidi,
+					../../../addons/ofxMidi/src,
+					../../../addons/ofxMidi/src/desktop,
+					../../../addons/ofxMidi/src/ios,
+					../../../addons/ofxXmlSettings/libs,
+					../../../addons/ofxXmlSettings/src,
+				);
+				LIBRARY_SEARCH_PATHS = "$(inherited)";
+				OTHER_CFLAGS = "-Wno-format-security";
+				OTHER_LDFLAGS = (
+					"$(OF_CORE_LIBS)",
+					"$(OF_CORE_FRAMEWORKS)",
+					"$(LIB_OF_DEBUG)",
+					"-lm",
+				);
+			};
+			name = Debug;
+		};
+		E4B69B610A3A1757003C02F2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = E4EB6923138AFD0F00A09F29 /* Project.xcconfig */;
+			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD)";
+				COPY_PHASE_STRIP = YES;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					/System/Library/Frameworks,
+				);
+				HEADER_SEARCH_PATHS = (
+					"$(OF_CORE_HEADERS)",
+					src,
+					src,
+					../../../addons/ofxFft/libs,
+					../../../addons/ofxFft/libs/fftw,
+					../../../addons/ofxFft/libs/fftw/include,
+					../../../addons/ofxFft/libs/fftw/lib,
+					../../../addons/ofxFft/libs/kiss,
+					../../../addons/ofxFft/src,
+					../../../addons/ofxMidi/libs,
+					../../../addons/ofxMidi/libs/pgmidi,
+					../../../addons/ofxMidi/libs/rtmidi,
+					../../../addons/ofxMidi/src,
+					../../../addons/ofxMidi/src/desktop,
+					../../../addons/ofxMidi/src/ios,
+					../../../addons/ofxXmlSettings/libs,
+					../../../addons/ofxXmlSettings/src,
+				);
+				LIBRARY_SEARCH_PATHS = "$(inherited)";
+				OTHER_CFLAGS = "-Wno-format-security";
+				OTHER_LDFLAGS = (
+					"$(OF_CORE_LIBS)",
+					"$(OF_CORE_FRAMEWORKS)",
+					"$(LIB_OF)",
+					"-lm",
+				);
+				baseConfigurationReference = E4EB6923138AFD0F00A09F29;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		E4B69B4D0A3A1720003C02F2 /* Build configuration list for PBXProject "nievePool" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E4B69B4E0A3A1720003C02F2 /* Debug */,
+				E4B69B4F0A3A1720003C02F2 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		E4B69B5F0A3A1757003C02F2 /* Build configuration list for PBXNativeTarget "nievePool" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E4B69B600A3A1757003C02F2 /* Debug */,
+				E4B69B610A3A1757003C02F2 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = E4B69B4C0A3A1720003C02F2 /* Project object */;
+}
