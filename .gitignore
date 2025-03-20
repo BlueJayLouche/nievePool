@@ -1,9 +1,7 @@
-<<<<<<< HEAD
 # OpenFrameworks-specific ignore patterns
 bin/*
 !bin/data/
 obj/
-#*.make
 *.xcodeproj
 *.xcconfig
 *.plist
@@ -49,8 +47,6 @@ Desktop.ini
 # Project specific
 build/
 settings.xml
-#Makefile
-#config.make
 
 # Exceptions
 !bin/data/.gitkeep
@@ -97,4 +93,3 @@ build/
 settings.xml
 mapping_template.xml
 
->>>>>>> 815fda1 (Added some video fixes)
