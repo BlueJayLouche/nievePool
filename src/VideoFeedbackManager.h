@@ -14,6 +14,7 @@
 class VideoFeedbackManager {
 public:
     VideoFeedbackManager(ParameterManager* paramManager, ShaderManager* shaderManager);
+    ~VideoFeedbackManager(); // Explicitly declare the destructor
     
     // Core methods
     void setup(int width, int height);
@@ -27,6 +28,7 @@ public:
     // Camera handling
     void setupCamera(int width, int height);
     void updateCamera();
+    void updateCameraTexture(); // New method for threaded camera updates
     
     // Camera
     ofVideoGrabber camera;
@@ -36,11 +38,32 @@ public:
     int getFrameBufferLength() const;
     void setFrameBufferLength(int length);
     
+    // Get frame skip factor based on performance settings
+    int getFrameSkipFactor() const {
+        bool performanceMode = paramManager ? paramManager->isPerformanceModeEnabled() : false;
+        #if defined(TARGET_LINUX) && (defined(__arm__) || defined(__aarch64__))
+            return performanceMode ? 3 : 2;
+        #else
+            return performanceMode ? 2 : 1;
+        #endif
+    }
+    
     // Toggle HD aspect ratio correction
     bool isHdmiAspectRatioEnabled() const;
     void setHdmiAspectRatioEnabled(bool enabled);
     
-    // Video device management methods - these need to be PUBLIC
+    // Lazy allocation for frame buffers
+    void allocatePastFrameIfNeeded(int index) {
+        if (index >= 0 && index < frameBufferLength && !pastFramesAllocated[index]) {
+            pastFrames[index].allocate(fboSettings);
+            pastFrames[index].begin();
+            ofClear(0, 0, 0, 255);
+            pastFrames[index].end();
+            pastFramesAllocated[index] = true;
+        }
+    }
+    
+    // Video device management methods
     void listVideoDevices();
     std::vector<std::string> getVideoDeviceList() const;
     int getCurrentVideoDeviceIndex() const;
@@ -74,6 +97,20 @@ private:
     void processMainPipeline();
     void checkGLError(const std::string& operation);
     
+    // Determine optimal frame buffer length based on platform
+    int determineOptimalFrameBufferLength() {
+        #if defined(TARGET_LINUX) && (defined(__arm__) || defined(__aarch64__))
+            // Raspberry Pi/ARM - use smaller buffer
+            return 30;
+        #elif defined(TARGET_OSX) || defined(TARGET_WIN32)
+            // Modern desktops - can handle larger buffer
+            return 60;
+        #else
+            // Default fallback
+            return 45;
+        #endif
+    }
+    
     // Reference to managers
     ParameterManager* paramManager;
     ShaderManager* shaderManager;
@@ -89,9 +126,17 @@ private:
     ofFbo dryFrameBuffer;       // Buffer for dry mode
     ofFbo aspectRatioFbo;       // Buffer for aspect ratio correction
     
+    // FBO settings storage for reuse
+    ofFboSettings fboSettings;  // Store settings for reuse in lazy allocation
+    
     // Circular buffer for delay effect
     int frameBufferLength = DEFAULT_FRAME_BUFFER_LENGTH;
     ofFbo* pastFrames = nullptr;
+    bool* pastFramesAllocated = nullptr; // Track which frames are allocated
+    
+    // Thread synchronization
+    std::mutex fboMutex;
+    bool newFrameReady = false;
     
     // Frame counting and delay management
     unsigned int frameCount = 0;

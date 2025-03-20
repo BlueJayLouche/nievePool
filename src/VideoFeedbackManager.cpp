@@ -3,8 +3,17 @@
 
 VideoFeedbackManager::VideoFeedbackManager(ParameterManager* paramManager, ShaderManager* shaderManager)
     : paramManager(paramManager), shaderManager(shaderManager) {
+    // Determine optimal frame buffer length based on platform
+    frameBufferLength = determineOptimalFrameBufferLength();
+    
     // Allocate pastFrames array
-    pastFrames = new ofFbo[DEFAULT_FRAME_BUFFER_LENGTH];
+    pastFrames = new ofFbo[frameBufferLength];
+    
+    // Allocate tracking array
+    pastFramesAllocated = new bool[frameBufferLength];
+    for (int i = 0; i < frameBufferLength; i++) {
+        pastFramesAllocated[i] = false;
+    }
 }
 
 void VideoFeedbackManager::setup(int width, int height) {
@@ -14,19 +23,161 @@ void VideoFeedbackManager::setup(int width, int height) {
     // Setup camera and allocate FBOs
     setupCamera(width, height);
     allocateFbos(width, height);
+    
+    // Only pre-allocate the first few frames that are frequently used
+    for (int i = 0; i < std::min(5, frameBufferLength); i++) {
+        allocatePastFrameIfNeeded(i);
+    }
+    
     clearFbos();
 }
 
-void VideoFeedbackManager::update() {
-    // Get performance mode setting
-    bool performanceMode = paramManager->isPerformanceModeEnabled();
+
+void VideoFeedbackManager::allocateFbos(int width, int height) {
+    // Check if we're in performance mode
+    bool performanceMode = paramManager ? paramManager->isPerformanceModeEnabled() : false;
     
-    // Update camera input
+    // Get available memory and adjust processing resolution accordingly
+    float memoryScaleFactor = 1.0f;
+    
+    #if defined(TARGET_LINUX) && (defined(__arm__) || defined(__aarch64__))
+        // Check available memory on Linux/ARM
+        struct sysinfo info;
+        if (sysinfo(&info) == 0) {
+            unsigned long availableRam = info.freeram * info.mem_unit / (1024 * 1024); // in MB
+            if (availableRam < 500) { // Less than 500MB free
+                memoryScaleFactor = 0.5f;
+            } else if (availableRam < 1000) { // Less than 1GB free
+                memoryScaleFactor = 0.75f;
+            }
+        } else {
+            // Fallback conservative value for Raspberry Pi
+            memoryScaleFactor = 0.6f;
+        }
+    #endif
+    
+    int fboWidth, fboHeight;
+    
+    if (performanceMode) {
+        // Dynamic resolution scaling based on performance mode and available memory
+        float aspectRatio = (float)height / width;
+        int baseWidth = paramManager ? paramManager->getPerformanceScale() : 640;
+        
+        // Apply memory scaling factor
+        baseWidth = std::max(320, (int)(baseWidth * memoryScaleFactor));
+        
+        fboWidth = std::min(width, baseWidth);
+        fboHeight = round(fboWidth * aspectRatio);
+    } else {
+        // Standard mode but still apply some memory scaling if needed
+        fboWidth = std::min(width, (int)(width * memoryScaleFactor));
+        fboHeight = std::min(height, (int)(height * memoryScaleFactor));
+    }
+    
+    // Create platform-agnostic FBO settings
+    fboSettings.width = fboWidth;
+    fboSettings.height = fboHeight;
+    fboSettings.numColorbuffers = 1;
+    fboSettings.useDepth = false;
+    fboSettings.useStencil = false;
+    fboSettings.numSamples = 0;  // No MSAA for compatibility
+    
+    // IMPORTANT FIX: Always use RGBA on Raspberry Pi
+    bool isArmLinux = false;
+#ifdef TARGET_LINUX
+    #if defined(__arm__) || defined(__aarch64__)
+        isArmLinux = true;
+    #else
+        // Fallback detection method using /proc/cpuinfo
+        FILE* cpuinfo = fopen("/proc/cpuinfo", "r");
+        if (cpuinfo) {
+            char line[256];
+            while (fgets(line, sizeof(line), cpuinfo)) {
+                if (strstr(line, "Raspberry Pi") || strstr(line, "BCM27") ||
+                    strstr(line, "BCM28") || strstr(line, "ARM")) {
+                    isArmLinux = true;
+                    break;
+                }
+            }
+            fclose(cpuinfo);
+        }
+    #endif
+#endif
+
+    if (isArmLinux) {
+        ofLogNotice("VideoFeedbackManager") << "ARM Linux detected, using GL_RGBA8 for better compatibility";
+        fboSettings.internalformat = GL_RGBA8;  // Always use RGBA8 on ARM Linux
+    } else {
+#ifdef TARGET_LINUX
+        fboSettings.internalformat = GL_RGB;
+#else
+        fboSettings.internalformat = GL_RGBA8;
+#endif
+    }
+
+    ofLogNotice("VideoFeedbackManager") << "Allocating FBOs with format: "
+                                       << (fboSettings.internalformat == GL_RGBA8 ? "GL_RGBA8" : "GL_RGB")
+                                       << " and resolution " << fboWidth << "x" << fboHeight;
+    
+    // Allocate the main FBOs with proper error handling
+    try {
+        // Main processing FBO
+        mainFbo.allocate(fboSettings);
+        mainFbo.begin();
+        ofClear(0, 0, 0, 255);
+        mainFbo.end();
+        
+        // Aspect ratio correction FBO
+        aspectRatioFbo.allocate(fboSettings);
+        aspectRatioFbo.begin();
+        ofClear(0, 0, 0, 255);
+        aspectRatioFbo.end();
+        
+        // Dry mode frame buffer
+        dryFrameBuffer.allocate(fboSettings);
+        dryFrameBuffer.begin();
+        ofClear(0, 0, 0, 255);
+        dryFrameBuffer.end();
+        
+        // Sharpen effect buffer
+        sharpenFbo.allocate(fboSettings);
+        sharpenFbo.begin();
+        ofClear(0, 0, 0, 255);
+        sharpenFbo.end();
+        
+        // We'll allocate past frames lazily as they're needed
+        for (int i = 0; i < frameBufferLength; i++) {
+            pastFramesAllocated[i] = false;
+        }
+        
+        ofLogNotice("VideoFeedbackManager") << "Core FBOs allocated with "
+                                           << fboWidth << "x" << fboHeight << " resolution";
+    } catch (std::exception& e) {
+        ofLogError("VideoFeedbackManager") << "Error allocating FBOs: " << e.what();
+    }
+}
+
+void VideoFeedbackManager::update() {
+    // Get performance mode setting and determine appropriate frame rate divisor
+    int frameSkip = getFrameSkipFactor();
+    
+    // Always update camera input
     updateCamera();
     
-    // Only process on certain frames in performance mode
-    if (!performanceMode || frameCount % 2 == 0) {
-        // Process main video feedback pipeline
+    // Process main pipeline only on certain frames to improve performance
+    if (frameCount % frameSkip == 0) {
+        // Pre-allocate frames we'll need for this frame
+        int delayAmount = ofClamp(paramManager->getDelayAmount(), 0, frameBufferLength - 1);
+        int delayIndex = ((frameBufferLength + currentFrameIndex - delayAmount) % frameBufferLength);
+        int temporalIndex = ((frameBufferLength + currentFrameIndex - 1) % frameBufferLength);
+        int storeIndex = ((frameBufferLength + currentFrameIndex - 1) % frameBufferLength);
+        
+        // Ensure needed frames are allocated
+        allocatePastFrameIfNeeded(delayIndex);
+        allocatePastFrameIfNeeded(temporalIndex);
+        allocatePastFrameIfNeeded(storeIndex);
+        
+        // Process the main video feedback pipeline
         processMainPipeline();
     }
     
@@ -37,102 +188,6 @@ void VideoFeedbackManager::update() {
 void VideoFeedbackManager::draw() {
     // Draw the final output to screen
     sharpenFbo.draw(0, 0, ofGetWidth(), ofGetHeight());
-}
-
-void VideoFeedbackManager::allocateFbos(int width, int height) {
-    // Check if we're in performance mode
-    bool performanceMode = paramManager ? paramManager->isPerformanceModeEnabled() : false;
-    int fboWidth = width;
-    int fboHeight = height;
-    
-    // Reduce resolution in performance mode
-    if (performanceMode) {
-        float aspectRatio = (float)height / width;
-        fboWidth = std::min(width, 640);
-        fboHeight = round(fboWidth * aspectRatio);
-        ofLogNotice("VideoFeedbackManager") << "Performance Mode: Reduced FBO resolution to "
-                                           << fboWidth << "x" << fboHeight;
-    }
-    
-    // Create platform-agnostic FBO settings
-    ofFboSettings settings;
-    settings.width = fboWidth;
-    settings.height = fboHeight;
-    settings.numColorbuffers = 1;
-    settings.useDepth = false;
-    settings.useStencil = false;
-    settings.numSamples = 0;  // No MSAA for compatibility
-    
-    // IMPORTANT FIX: Always use RGBA on Raspberry Pi
-    bool isRaspberryPi = false;
-#ifdef TARGET_LINUX
-    // Check if we're running on Raspberry Pi
-    FILE* cpuinfo = fopen("/proc/cpuinfo", "r");
-    if (cpuinfo) {
-        char line[256];
-        while (fgets(line, sizeof(line), cpuinfo)) {
-            if (strstr(line, "Raspberry Pi") || strstr(line, "BCM27") || strstr(line, "BCM28")) {
-                isRaspberryPi = true;
-                break;
-            }
-        }
-        fclose(cpuinfo);
-    }
-#endif
-    
-    if (isRaspberryPi) {
-        ofLogNotice("VideoFeedbackManager") << "Raspberry Pi detected, using GL_RGBA8 for better compatibility";
-        settings.internalformat = GL_RGBA8;  // Always use RGBA8 on Pi
-    } else {
-#ifdef TARGET_LINUX
-        settings.internalformat = GL_RGB;
-#else
-        settings.internalformat = GL_RGBA8;
-#endif
-    }
-    
-    ofLogNotice("VideoFeedbackManager") << "Allocating FBOs with format: "
-                                       << (settings.internalformat == GL_RGBA8 ? "GL_RGBA8" : "GL_RGB");
-    
-    // Allocate FBOs with proper error handling
-    try {
-        // Main processing FBO
-        mainFbo.allocate(settings);
-        mainFbo.begin();
-        ofClear(0, 0, 0, 255);
-        mainFbo.end();
-        
-        // Aspect ratio correction FBO
-        aspectRatioFbo.allocate(settings);
-        aspectRatioFbo.begin();
-        ofClear(0, 0, 0, 255);
-        aspectRatioFbo.end();
-        
-        // Dry mode frame buffer
-        dryFrameBuffer.allocate(settings);
-        dryFrameBuffer.begin();
-        ofClear(0, 0, 0, 255);
-        dryFrameBuffer.end();
-        
-        // Sharpen effect buffer
-        sharpenFbo.allocate(settings);
-        sharpenFbo.begin();
-        ofClear(0, 0, 0, 255);
-        sharpenFbo.end();
-        
-        // Allocate past frames for delay effect
-        for (int i = 0; i < frameBufferLength; i++) {
-            pastFrames[i].allocate(settings);
-            pastFrames[i].begin();
-            ofClear(0, 0, 0, 255);
-            pastFrames[i].end();
-        }
-        
-        ofLogNotice("VideoFeedbackManager") << "FBOs allocated with "
-                                           << fboWidth << "x" << fboHeight << " resolution";
-    } catch (std::exception& e) {
-        ofLogError("VideoFeedbackManager") << "Error allocating FBOs: " << e.what();
-    }
 }
 
 void VideoFeedbackManager::clearFbos() {
@@ -563,12 +618,51 @@ void VideoFeedbackManager::updateCamera() {
     }
 }
 
+void VideoFeedbackManager::updateCameraTexture() {
+    // This would be called from a camera thread in a threaded implementation
+    if (cameraInitialized && camera.isFrameNew()) {
+        std::lock_guard<std::mutex> lock(fboMutex);
+        
+        aspectRatioFbo.begin();
+        ofClear(0, 0, 0, 255);
+        
+        // Make sure dimensions are valid
+        int camWidth = camera.getWidth();
+        int camHeight = camera.getHeight();
+        
+        if (camWidth > 0 && camHeight > 0) {
+            // Draw using different aspect ratio handling based on settings
+            if (hdmiAspectRatioEnabled) {
+                // Use 16:9 aspect ratio correction
+                camera.draw(0, 0, 853, 480);
+            } else {
+                // Use normal dimensions
+                camera.draw(0, 0, width, height);
+            }
+        }
+        
+        aspectRatioFbo.end();
+        newFrameReady = true;
+    }
+}
+
 void VideoFeedbackManager::incrementFrameIndex() {
     frameCount++;
     currentFrameIndex = frameCount % frameBufferLength;
 }
 
 void VideoFeedbackManager::processMainPipeline() {
+    // Pre-allocate only the frames we'll need this frame
+    int delayAmount = ofClamp(paramManager->getDelayAmount(), 0, frameBufferLength - 1);
+    int delayIndex = ((frameBufferLength + currentFrameIndex - delayAmount) % frameBufferLength);
+    int temporalIndex = ((frameBufferLength + currentFrameIndex - 1) % frameBufferLength);
+    int storeIndex = ((frameBufferLength + currentFrameIndex - 1) % frameBufferLength);
+    
+    // Ensure needed frames are allocated
+    allocatePastFrameIfNeeded(delayIndex);
+    allocatePastFrameIfNeeded(temporalIndex);
+    allocatePastFrameIfNeeded(storeIndex);
+    
     // Safety checks before processing
     if (!paramManager || !shaderManager) {
         ofLogError("VideoFeedbackManager") << "Missing manager pointers! Cannot process pipeline.";
@@ -645,12 +739,8 @@ void VideoFeedbackManager::processMainPipeline() {
     float zLfoRate = paramManager->getZLfoRate();
     float rotateLfoAmp = paramManager->getRotateLfoAmp();
     float rotateLfoRate = paramManager->getRotateLfoRate();
-    
-    // Calculate delay index with safety bounds
-    int delayAmount = ofClamp(paramManager->getDelayAmount(), 0, frameBufferLength - 1);
-    
+      
     // Safe index calculation with bounds checking
-    int delayIndex = 0;
     if (frameBufferLength > 0) {
         delayIndex = ((frameBufferLength + currentFrameIndex - delayAmount) % frameBufferLength);
     }
@@ -914,5 +1004,17 @@ void VideoFeedbackManager::loadFromXml(ofxXmlSettings& xml) {
         xml.popTag(); // pop videoFeedback
     } else {
         ofLogWarning("VideoFeedbackManager") << "No videoFeedback tag found in settings";
+    }
+}
+
+VideoFeedbackManager::~VideoFeedbackManager() {
+    if (pastFrames) {
+        delete[] pastFrames;
+        pastFrames = nullptr;
+    }
+    
+    if (pastFramesAllocated) {
+        delete[] pastFramesAllocated;
+        pastFramesAllocated = nullptr;
     }
 }
