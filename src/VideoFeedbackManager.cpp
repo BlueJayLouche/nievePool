@@ -38,57 +38,17 @@ void VideoFeedbackManager::setup(int width, int height) {
 void VideoFeedbackManager::allocateFbos(int width, int height) {
     // Check if we're in performance mode
     bool performanceMode = paramManager ? paramManager->isPerformanceModeEnabled() : false;
+    int fboWidth = width;
+    int fboHeight = height;
     
-    // Get available memory and adjust processing resolution accordingly
-    float memoryScaleFactor = 1.0f;
-    
-    #if defined(TARGET_LINUX)
-        // Check available memory on Linux using a safer approach
-        #if defined(__arm__) || defined(__aarch64__)
-            // Default conservative value for Raspberry Pi
-            memoryScaleFactor = 0.7f;
-            
-            // Try to get more accurate memory info if possible
-            #ifdef __linux__
-                // This is the proper way to include sysinfo
-                struct ::sysinfo memInfo;
-                if (::sysinfo(&memInfo) == 0) {
-                    unsigned long availableRam = memInfo.freeram * memInfo.mem_unit / (1024 * 1024); // in MB
-                    ofLogNotice("VideoFeedbackManager") << "Available RAM: " << availableRam << "MB";
-                    
-                    if (availableRam < 500) { // Less than 500MB free
-                        memoryScaleFactor = 0.5f;
-                    } else if (availableRam < 1000) { // Less than 1GB free
-                        memoryScaleFactor = 0.7f;
-                    } else {
-                        memoryScaleFactor = 0.85f;
-                    }
-                }
-            #endif
-        #endif
-    #endif
-    
-    int fboWidth, fboHeight;
-    
+    // Reduce resolution in performance mode
     if (performanceMode) {
-        // Dynamic resolution scaling based on performance mode and available memory
         float aspectRatio = (float)height / width;
-        int baseWidth = paramManager ? paramManager->getPerformanceScale() : 640;
-        
-        // Apply memory scaling factor
-        baseWidth = std::max(320, (int)(baseWidth * memoryScaleFactor));
-        
-        fboWidth = std::min(width, baseWidth);
+        fboWidth = std::min(width, 640);
         fboHeight = round(fboWidth * aspectRatio);
-    } else {
-        // Standard mode but still apply some memory scaling if needed
-        fboWidth = std::min(width, (int)(width * memoryScaleFactor));
-        fboHeight = std::min(height, (int)(height * memoryScaleFactor));
+        ofLogNotice("VideoFeedbackManager") << "Performance Mode: Reduced FBO resolution to "
+                                           << fboWidth << "x" << fboHeight;
     }
-    
-    ofLogNotice("VideoFeedbackManager") << "Allocating FBOs with resolution: "
-                                      << fboWidth << "x" << fboHeight
-                                      << " (memory scale factor: " << memoryScaleFactor << ")";
     
     // Create platform-agnostic FBO settings
     ofFboSettings settings;
@@ -99,29 +59,28 @@ void VideoFeedbackManager::allocateFbos(int width, int height) {
     settings.useStencil = false;
     settings.numSamples = 0;  // No MSAA for compatibility
     
-    // Store the settings for lazy allocation later
-    fboSettings = settings;
-    
-    // IMPORTANT FIX: Always use RGBA on Raspberry Pi/ARM Linux
+    // IMPORTANT FIX: Always use RGBA8 on ARM Linux
     bool isArmLinux = false;
-    #if defined(TARGET_LINUX) && (defined(__arm__) || defined(__aarch64__))
-        isArmLinux = true;
-    #else
-        // Fallback detection method using /proc/cpuinfo
-        FILE* cpuinfo = fopen("/proc/cpuinfo", "r");
-        if (cpuinfo) {
-            char line[256];
-            while (fgets(line, sizeof(line), cpuinfo)) {
-                if (strstr(line, "Raspberry Pi") || strstr(line, "BCM27") ||
-                    strstr(line, "BCM28") || strstr(line, "ARM")) {
-                    isArmLinux = true;
-                    break;
+    #if defined(TARGET_LINUX)
+        #if defined(__arm__) || defined(__aarch64__)
+            isArmLinux = true;
+        #else
+            // Fallback detection method using /proc/cpuinfo
+            FILE* cpuinfo = fopen("/proc/cpuinfo", "r");
+            if (cpuinfo) {
+                char line[256];
+                while (fgets(line, sizeof(line), cpuinfo)) {
+                    if (strstr(line, "Raspberry Pi") || strstr(line, "BCM27") ||
+                        strstr(line, "BCM28") || strstr(line, "ARM")) {
+                        isArmLinux = true;
+                        break;
+                    }
                 }
+                fclose(cpuinfo);
             }
-            fclose(cpuinfo);
-        }
+        #endif
     #endif
-    
+
     if (isArmLinux) {
         ofLogNotice("VideoFeedbackManager") << "ARM Linux detected, using GL_RGBA8 for better compatibility";
         settings.internalformat = GL_RGBA8;  // Always use RGBA8 on ARM Linux
@@ -129,10 +88,13 @@ void VideoFeedbackManager::allocateFbos(int width, int height) {
         #ifdef TARGET_LINUX
             settings.internalformat = GL_RGB;
         #else
-            settings.internalformat = GL_RGBA8;
+            settings.internalformat = GL_RGBA8;  // Default to RGBA8 on non-Linux platforms
         #endif
     }
-    
+
+    // Store the settings for later use
+    fboSettings = settings;
+
     ofLogNotice("VideoFeedbackManager") << "Allocating FBOs with format: "
                                        << (settings.internalformat == GL_RGBA8 ? "GL_RGBA8" : "GL_RGB");
     
@@ -162,22 +124,29 @@ void VideoFeedbackManager::allocateFbos(int width, int height) {
         ofClear(0, 0, 0, 255);
         sharpenFbo.end();
         
-        // Initialize allocation tracking
+        // Initialize allocation tracking (if implemented)
         if (pastFramesAllocated) {
             for (int i = 0; i < frameBufferLength; i++) {
                 pastFramesAllocated[i] = false;
             }
+            
+            // Pre-allocate just a few frames to start
+            int preAllocateCount = std::min(5, frameBufferLength);
+            for (int i = 0; i < preAllocateCount; i++) {
+                allocatePastFrameIfNeeded(i);
+            }
+        } else {
+            // Traditional allocation if lazy loading not implemented
+            for (int i = 0; i < frameBufferLength; i++) {
+                pastFrames[i].allocate(settings);
+                pastFrames[i].begin();
+                ofClear(0, 0, 0, 255);
+                pastFrames[i].end();
+            }
         }
         
-        // Pre-allocate just the first few frames that will likely be used
-        int preAllocateCount = std::min(5, frameBufferLength);
-        for (int i = 0; i < preAllocateCount; i++) {
-            allocatePastFrameIfNeeded(i);
-        }
-        
-        ofLogNotice("VideoFeedbackManager") << "Core FBOs allocated with "
-                                           << fboWidth << "x" << fboHeight << " resolution. "
-                                           << "Pre-allocated " << preAllocateCount << " frame buffers.";
+        ofLogNotice("VideoFeedbackManager") << "FBOs allocated with "
+                                           << fboWidth << "x" << fboHeight << " resolution";
     } catch (std::exception& e) {
         ofLogError("VideoFeedbackManager") << "Error allocating FBOs: " << e.what();
     }
@@ -343,6 +312,8 @@ bool VideoFeedbackManager::selectVideoDevice(const std::string& deviceName) {
     return false;
 }
 
+// Add this method to VideoFeedbackManager.cpp
+
 void VideoFeedbackManager::setupCamera(int width, int height) {
     this->width = width;
     this->height = height;
@@ -365,62 +336,97 @@ void VideoFeedbackManager::setupCamera(int width, int height) {
     
     ofLogNotice("VideoFeedbackManager") << "Using device path: " << devicePath;
     
-    // Get or list available video formats to choose the most compatible one
-    auto formats = V4L2Helper::listFormats(devicePath);
-    ofLogNotice("VideoFeedbackManager") << "Available formats:";
+    // Get list of devices using V4L2Helper
+    auto devices = V4L2Helper::listDevices();
+    ofLogNotice("VideoFeedbackManager") << "Found " << devices.size() << " video devices:";
+    for (const auto& device : devices) {
+        ofLogNotice("VideoFeedbackManager") << "  " << device.id << ": " << device.name << " (" << device.path << ")";
+    }
     
-    // Check for EM2860 devices, which need special handling
-    bool isEM2860 = false;
-    bool hasBayer = false;
-    
-    // Open device to check if it's an EM2860
-    int fd = open(devicePath.c_str(), O_RDWR);
-    if (fd >= 0) {
-        struct v4l2_capability cap;
-        if (ioctl(fd, VIDIOC_QUERYCAP, &cap) >= 0) {
-            std::string cardName = reinterpret_cast<const char*>(cap.card);
-            if (cardName.find("EM2860") != std::string::npos ||
-                cardName.find("SAA711X") != std::string::npos) {
-                isEM2860 = true;
-                ofLogNotice("VideoFeedbackManager") << "Detected EM2860 device, which needs special handling";
+    // Find the device that matches our path
+    for (const auto& device : devices) {
+        if (device.path == devicePath) {
+            // Get available formats for this device
+            auto formats = V4L2Helper::listFormats(devicePath);
+            ofLogNotice("VideoFeedbackManager") << "Available formats for " << device.name << ":";
+            
+            for (const auto& format : formats) {
+                ofLogNotice("VideoFeedbackManager") << "  " << format.name << " (" << format.fourcc << ")";
             }
+            
+            // Select a preferred format (prioritize YUYV for compatibility)
+            uint32_t selectedFormat = 0;
+            std::string preferredFormats[] = {"YUYV", "YUY2", "MJPG", "RGB3"};
+            
+            for (const auto& preferred : preferredFormats) {
+                for (const auto& format : formats) {
+                    if (format.fourcc == preferred) {
+                        selectedFormat = format.pixelFormat;
+                        ofLogNotice("VideoFeedbackManager") << "Selected format: " << format.name << " (" << format.fourcc << ")";
+                        break;
+                    }
+                }
+                if (selectedFormat != 0) break;
+            }
+            
+            // If no preferred format found, use the first available
+            if (selectedFormat == 0 && !formats.empty()) {
+                selectedFormat = formats[0].pixelFormat;
+                ofLogNotice("VideoFeedbackManager") << "Using first available format: "
+                                                  << formats[0].name << " (" << formats[0].fourcc << ")";
+            }
+            
+            // Get available resolutions for this format
+            if (selectedFormat != 0) {
+                auto resolutions = V4L2Helper::listResolutions(devicePath, selectedFormat);
+                ofLogNotice("VideoFeedbackManager") << "Available resolutions:";
+                
+                for (const auto& res : resolutions) {
+                    ofLogNotice("VideoFeedbackManager") << "  " << res.width << "x" << res.height;
+                }
+                
+                // Find the closest resolution that's not larger than requested
+                int bestWidth = 0, bestHeight = 0;
+                for (const auto& res : resolutions) {
+                    if (res.width <= width && res.height <= height &&
+                        (res.width > bestWidth || res.height > bestHeight)) {
+                        bestWidth = res.width;
+                        bestHeight = res.height;
+                    }
+                }
+                
+                // If no suitable resolution found, find the smallest one
+                if (bestWidth == 0 || bestHeight == 0) {
+                    bestWidth = 10000;
+                    bestHeight = 10000;
+                    for (const auto& res : resolutions) {
+                        if (res.width < bestWidth && res.height < bestHeight) {
+                            bestWidth = res.width;
+                            bestHeight = res.height;
+                        }
+                    }
+                }
+                
+                // Make sure we have valid dimensions
+                if (bestWidth > 0 && bestWidth < 10000 && bestHeight > 0 && bestHeight < 10000) {
+                    // Set the format using V4L2Helper
+                    ofLogNotice("VideoFeedbackManager") << "Setting format to " << bestWidth << "x" << bestHeight;
+                    V4L2Helper::setFormat(devicePath, selectedFormat, bestWidth, bestHeight);
+                    
+                    // Update width and height to match what we set
+                    width = bestWidth;
+                    height = bestHeight;
+                }
+            }
+            
+            break;
         }
-        close(fd);
-    }
-    
-    // Log available formats
-    for (const auto& format : formats) {
-        ofLogNotice("VideoFeedbackManager") << "  " << format.name << " (" << format.fourcc << ")";
-        if (format.fourcc == "YUYV") {
-            // Check if YUYV is available
-        } else if (format.fourcc == "RGGB" || format.fourcc == "BA81" ||
-                  format.fourcc == "GRBG" || format.fourcc == "GBRG") {
-            hasBayer = true;
-        }
-    }
-    
-    // For EM2860 devices: Don't try to set format via V4L2 directly if we're going to use GStreamer
-    // Just get the native resolution that the device actually supports
-    std::vector<std::pair<int, int>> potentialResolutions = {
-        {720, 576},  // PAL standard - common for EM2860 devices
-        {720, 480},  // NTSC standard
-        {640, 480},  // VGA
-        {576, 460},  // Another possible EM2860 format
-        {352, 288},  // CIF
-        {320, 240}   // QVGA (fallback)
-    };
-    
-    // For EM2860, use the native resolution
-    if (isEM2860) {
-        ofLogNotice("VideoFeedbackManager") << "Using native resolution for EM2860 device (720x576 PAL or 720x480 NTSC)";
-        // Update our target dimensions to match the likely native resolution
-        width = 720;
-        height = 576; // Assume PAL first, this may be adjusted during initialization
     }
 #endif
 
     // List available devices before attempting to initialize
-    listVideoDevices();
+    camera.listDevices();
+    videoDevices = camera.listDevices();
     
     // Set reasonable defaults for camera
     camera.setDesiredFrameRate(30);
@@ -437,50 +443,20 @@ void VideoFeedbackManager::setupCamera(int width, int height) {
     // Try initialize with requested dimensions
     bool initSuccess = false;
     
-    // First attempt with native dimensions for EM2860
     try {
         if (camera.isInitialized()) camera.close();
         
-#ifdef TARGET_LINUX
-        if (isEM2860) {
-            // For EM2860, try the exact dimensions we determined above
-            ofLogNotice("VideoFeedbackManager") << "Initializing EM2860 camera with native dimensions: "
-                                               << width << "x" << height;
-            
-            // For EM2860 devices, we need to add custom pipeline hints
-            camera.setUseTexture(true);
-            
-            // Try PAL dimensions first (720x576)
-            camera.initGrabber(width, height);
-            if (camera.isInitialized()) {
-                initSuccess = true;
-                ofLogNotice("VideoFeedbackManager") << "Successfully initialized EM2860 camera with dimensions: "
-                                                  << camera.getWidth() << "x" << camera.getHeight();
-            } else {
-                // If PAL fails, try NTSC (720x480)
-                width = 720;
-                height = 480;
-                ofLogNotice("VideoFeedbackManager") << "Trying NTSC dimensions: " << width << "x" << height;
-                camera.initGrabber(width, height);
-                if (camera.isInitialized()) {
-                    initSuccess = true;
-                    ofLogNotice("VideoFeedbackManager") << "Successfully initialized EM2860 camera with NTSC dimensions: "
-                                                      << camera.getWidth() << "x" << camera.getHeight();
-                }
-            }
-        } else {
-#endif
-            // For regular cameras, try with requested dimensions first
-            ofLogNotice("VideoFeedbackManager") << "Initializing camera at " << width << "x" << height;
-            camera.initGrabber(width, height);
-            if (camera.isInitialized()) {
-                initSuccess = true;
-                ofLogNotice("VideoFeedbackManager") << "Successfully initialized camera with dimensions: "
-                                                  << camera.getWidth() << "x" << camera.getHeight();
-            }
-#ifdef TARGET_LINUX
+        // Set the texture format to be compatible across platforms
+        camera.setUseTexture(true);
+        
+        ofLogNotice("VideoFeedbackManager") << "Initializing camera at " << width << "x" << height;
+        camera.initGrabber(width, height);
+        
+        if (camera.isInitialized()) {
+            initSuccess = true;
+            ofLogNotice("VideoFeedbackManager") << "Successfully initialized camera with dimensions: "
+                                              << camera.getWidth() << "x" << camera.getHeight();
         }
-#endif
     } catch (const std::exception& e) {
         ofLogError("VideoFeedbackManager") << "Exception initializing camera: " << e.what();
     }
@@ -501,23 +477,7 @@ void VideoFeedbackManager::setupCamera(int width, int height) {
                 ofLogNotice("VideoFeedbackManager") << "Trying fallback resolution: " << res.first << "x" << res.second;
                 if (camera.isInitialized()) camera.close();
                 
-#ifdef TARGET_LINUX
-                // For Raspberry Pi and EM2860 devices, we need to try with explicit GStreamer pipeline
-                if (isEM2860 && (res.first == 720 && (res.second == 576 || res.second == 480))) {
-                    // For EM2860 with likely native resolutions, use modified approach
-                    ofLogNotice("VideoFeedbackManager") << "Trying EM2860 with explicit pipeline for "
-                                                       << res.first << "x" << res.second;
-                    
-                    // Force camera to accept the format we know works
-                    camera.setUseTexture(true);
-                    camera.initGrabber(res.first, res.second);
-                } else {
-                    // Normal initialization for other resolutions
-                    camera.initGrabber(res.first, res.second);
-                }
-#else
                 camera.initGrabber(res.first, res.second);
-#endif
                 
                 if (camera.isInitialized()) {
                     initSuccess = true;
@@ -528,25 +488,6 @@ void VideoFeedbackManager::setupCamera(int width, int height) {
             } catch (const std::exception& e) {
                 ofLogError("VideoFeedbackManager") << "Exception with fallback resolution: " << e.what();
             }
-        }
-    }
-    
-    // Last resort: try to use ANY available settings
-    if (!initSuccess) {
-        try {
-            ofLogNotice("VideoFeedbackManager") << "Trying initialization with default settings";
-            if (camera.isInitialized()) camera.close();
-            camera.initGrabber(320, 240); // Use smallest common resolution
-            
-            if (camera.isInitialized()) {
-                initSuccess = true;
-                ofLogNotice("VideoFeedbackManager") << "Successfully initialized camera with minimal settings: "
-                                                 << camera.getWidth() << "x" << camera.getHeight();
-            } else {
-                ofLogError("VideoFeedbackManager") << "All camera initialization attempts failed";
-            }
-        } catch (const std::exception& e) {
-            ofLogError("VideoFeedbackManager") << "Last exception in camera init: " << e.what();
         }
     }
     
