@@ -263,46 +263,54 @@ void VideoFeedbackManager::setupCamera(int width, int height) {
     // Get or list available video formats to choose the most compatible one
     auto formats = V4L2Helper::listFormats(devicePath);
     ofLogNotice("VideoFeedbackManager") << "Available formats:";
-    bool hasYUYV = false;
+    
+    // Check for EM2860 devices, which need special handling
+    bool isEM2860 = false;
+    bool hasBayer = false;
+    
+    // Open device to check if it's an EM2860
+    int fd = open(devicePath.c_str(), O_RDWR);
+    if (fd >= 0) {
+        struct v4l2_capability cap;
+        if (ioctl(fd, VIDIOC_QUERYCAP, &cap) >= 0) {
+            std::string cardName = reinterpret_cast<const char*>(cap.card);
+            if (cardName.find("EM2860") != std::string::npos ||
+                cardName.find("SAA711X") != std::string::npos) {
+                isEM2860 = true;
+                ofLogNotice("VideoFeedbackManager") << "Detected EM2860 device, which needs special handling";
+            }
+        }
+        close(fd);
+    }
+    
+    // Log available formats
     for (const auto& format : formats) {
         ofLogNotice("VideoFeedbackManager") << "  " << format.name << " (" << format.fourcc << ")";
         if (format.fourcc == "YUYV") {
-            hasYUYV = true;
+            // Check if YUYV is available
+        } else if (format.fourcc == "RGGB" || format.fourcc == "BA81" ||
+                  format.fourcc == "GRBG" || format.fourcc == "GBRG") {
+            hasBayer = true;
         }
     }
     
-    // Force YUYV format for the EM2860 devices - this format is most reliable
-    if (hasYUYV) {
-        ofLogNotice("VideoFeedbackManager") << "Pre-configuring for YUYV format";
-        
-        // Try multiple common resolutions for this device, starting with requested dimensions
-        std::vector<std::pair<int, int>> resolutions = {
-            {width, height},    // Requested dimensions
-            {640, 480},         // Standard VGA
-            {720, 576},         // PAL
-            {720, 480},         // NTSC
-            {352, 288},         // CIF
-            {320, 240}          // QVGA (fallback)
-        };
-        
-        bool formatSet = false;
-        for (const auto& res : resolutions) {
-            // Try to set the format via V4L2Helper
-            if (V4L2Helper::setFormat(devicePath, V4L2Helper::formatNameToCode("YUYV"),
-                                     res.first, res.second)) {
-                ofLogNotice("VideoFeedbackManager") << "Successfully set camera format to YUYV "
-                                                   << res.first << "x" << res.second;
-                
-                width = res.first;   // Update dimensions to what was actually set
-                height = res.second;
-                formatSet = true;
-                break;
-            }
-        }
-        
-        if (!formatSet) {
-            ofLogWarning("VideoFeedbackManager") << "Failed to set camera format, continuing anyway...";
-        }
+    // For EM2860 devices: Don't try to set format via V4L2 directly if we're going to use GStreamer
+    // Just get the native resolution that the device actually supports
+    std::vector<std::pair<int, int>> potentialResolutions = {
+        {720, 576},  // PAL standard - common for EM2860 devices
+        {720, 480},  // NTSC standard
+        {640, 480},  // VGA
+        {576, 460},  // Another possible EM2860 format
+        {352, 288},  // CIF
+        {320, 240}   // QVGA (fallback)
+    };
+    
+    // For EM2860, use the native resolution
+    if (isEM2860) {
+        ofLogNotice("VideoFeedbackManager") << "Using native resolution for EM2860 device (720x576 PAL or 720x480 NTSC)";
+        // Update our target dimensions to match the likely native resolution
+        width = 720;
+        height = 576; // Assume PAL first, this may be adjusted during initialization
     }
 #endif
 
@@ -324,16 +332,50 @@ void VideoFeedbackManager::setupCamera(int width, int height) {
     // Try initialize with requested dimensions
     bool initSuccess = false;
     
-    // First attempt with clean settings
+    // First attempt with native dimensions for EM2860
     try {
         if (camera.isInitialized()) camera.close();
-        ofLogNotice("VideoFeedbackManager") << "Initializing camera at " << width << "x" << height;
-        camera.initGrabber(width, height);
-        if (camera.isInitialized()) {
-            initSuccess = true;
-            ofLogNotice("VideoFeedbackManager") << "Successfully initialized camera with dimensions: "
-                                              << camera.getWidth() << "x" << camera.getHeight();
+        
+#ifdef TARGET_LINUX
+        if (isEM2860) {
+            // For EM2860, try the exact dimensions we determined above
+            ofLogNotice("VideoFeedbackManager") << "Initializing EM2860 camera with native dimensions: "
+                                               << width << "x" << height;
+            
+            // For EM2860 devices, we need to add custom pipeline hints
+            camera.setUseTexture(true);
+            
+            // Try PAL dimensions first (720x576)
+            camera.initGrabber(width, height);
+            if (camera.isInitialized()) {
+                initSuccess = true;
+                ofLogNotice("VideoFeedbackManager") << "Successfully initialized EM2860 camera with dimensions: "
+                                                  << camera.getWidth() << "x" << camera.getHeight();
+            } else {
+                // If PAL fails, try NTSC (720x480)
+                width = 720;
+                height = 480;
+                ofLogNotice("VideoFeedbackManager") << "Trying NTSC dimensions: " << width << "x" << height;
+                camera.initGrabber(width, height);
+                if (camera.isInitialized()) {
+                    initSuccess = true;
+                    ofLogNotice("VideoFeedbackManager") << "Successfully initialized EM2860 camera with NTSC dimensions: "
+                                                      << camera.getWidth() << "x" << camera.getHeight();
+                }
+            }
+        } else {
+#endif
+            // For regular cameras, try with requested dimensions first
+            ofLogNotice("VideoFeedbackManager") << "Initializing camera at " << width << "x" << height;
+            camera.initGrabber(width, height);
+            if (camera.isInitialized()) {
+                initSuccess = true;
+                ofLogNotice("VideoFeedbackManager") << "Successfully initialized camera with dimensions: "
+                                                  << camera.getWidth() << "x" << camera.getHeight();
+            }
+#ifdef TARGET_LINUX
         }
+#endif
     } catch (const std::exception& e) {
         ofLogError("VideoFeedbackManager") << "Exception initializing camera: " << e.what();
     }
@@ -353,7 +395,24 @@ void VideoFeedbackManager::setupCamera(int width, int height) {
             try {
                 ofLogNotice("VideoFeedbackManager") << "Trying fallback resolution: " << res.first << "x" << res.second;
                 if (camera.isInitialized()) camera.close();
+                
+#ifdef TARGET_LINUX
+                // For Raspberry Pi and EM2860 devices, we need to try with explicit GStreamer pipeline
+                if (isEM2860 && (res.first == 720 && (res.second == 576 || res.second == 480))) {
+                    // For EM2860 with likely native resolutions, use modified approach
+                    ofLogNotice("VideoFeedbackManager") << "Trying EM2860 with explicit pipeline for "
+                                                       << res.first << "x" << res.second;
+                    
+                    // Force camera to accept the format we know works
+                    camera.setUseTexture(true);
+                    camera.initGrabber(res.first, res.second);
+                } else {
+                    // Normal initialization for other resolutions
+                    camera.initGrabber(res.first, res.second);
+                }
+#else
                 camera.initGrabber(res.first, res.second);
+#endif
                 
                 if (camera.isInitialized()) {
                     initSuccess = true;

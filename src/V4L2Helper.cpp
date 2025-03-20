@@ -167,10 +167,22 @@ bool V4L2Helper::setFormat(const std::string& devicePath, uint32_t format, int w
         return false;
     }
     
-    // For EM2860 devices, YUYV is more reliable than BAYER
-    // Force YUYV format for problematic devices
-    if (format == V4L2_PIX_FMT_SBGGR8 || format == V4L2_PIX_FMT_SGBRG8 ||
-        format == V4L2_PIX_FMT_SGRBG8 || format == V4L2_PIX_FMT_SRGGB8) {
+    // For EM2860 devices, use the native format instead of forcing YUYV
+    // EM2860 often works better with its native Bayer format
+    bool isEM2860 = false;
+    struct v4l2_capability cap;
+    if (ioctl(fd, VIDIOC_QUERYCAP, &cap) >= 0) {
+        std::string cardName = reinterpret_cast<const char*>(cap.card);
+        if (cardName.find("EM2860") != std::string::npos ||
+            cardName.find("SAA711X") != std::string::npos) {
+            isEM2860 = true;
+            ofLogNotice("V4L2Helper") << "Detected EM2860 device, using native format";
+        }
+    }
+    
+    // Don't force YUYV for EM2860 devices, let them use their native format
+    if (!isEM2860 && (format == V4L2_PIX_FMT_SBGGR8 || format == V4L2_PIX_FMT_SGBRG8 ||
+        format == V4L2_PIX_FMT_SGRBG8 || format == V4L2_PIX_FMT_SRGGB8)) {
         format = V4L2_PIX_FMT_YUYV;
         ofLogNotice("V4L2Helper") << "Forcing YUYV format instead of BAYER for better compatibility";
     }
@@ -191,14 +203,14 @@ bool V4L2Helper::setFormat(const std::string& devicePath, uint32_t format, int w
         return false;
     }
     
-    // Verify the format was set correctly
-    if (fmt.fmt.pix.pixelformat != format ||
-        fmt.fmt.pix.width != width ||
-        fmt.fmt.pix.height != height) {
-        ofLogWarning("V4L2Helper") << "Device negotiated different format: "
-                                  << formatCodeToFourCC(fmt.fmt.pix.pixelformat) << " "
-                                  << fmt.fmt.pix.width << "x" << fmt.fmt.pix.height;
-    }
+    // Always log the actual format that was negotiated
+    ofLogNotice("V4L2Helper") << "Device actually negotiated format: "
+                             << formatCodeToFourCC(fmt.fmt.pix.pixelformat) << " "
+                             << fmt.fmt.pix.width << "x" << fmt.fmt.pix.height;
+    
+    // Update width and height to what was actually set - this is critical!
+    width = fmt.fmt.pix.width;
+    height = fmt.fmt.pix.height;
     
     // Set frame rate (30fps is a good default)
     struct v4l2_streamparm parm;
