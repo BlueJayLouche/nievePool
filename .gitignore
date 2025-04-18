@@ -46,7 +46,7 @@ Desktop.ini
 
 # Project specific
 build/
-settings.xml
+*settings.xml
 
 # Exceptions
 !bin/data/.gitkeep
