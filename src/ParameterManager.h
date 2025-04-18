@@ -97,6 +97,10 @@ public:
 
     int getVideoFrameRate() const { return videoFrameRate; }
     void setVideoFrameRate(int fps) { videoFrameRate = fps; }
+
+    // OSC settings getters/setters
+    int getOscPort() const { return oscPort; }
+    void setOscPort(int port) { oscPort = port; }
     
     // Parameter getters/setters
     float getLumakeyValue() const;
@@ -243,8 +247,47 @@ public:
     // XML settings
     void loadFromXml(ofxXmlSettings& xml);
     void saveToXml(ofxXmlSettings& xml) const;
+
+    // Mapping Getters
+    int getMidiChannel(const std::string& paramId) const;
+    int getMidiControl(const std::string& paramId) const;
+    std::string getOscAddress(const std::string& paramId) const;
+    const std::vector<std::string>& getAllParameterIds() const;
     
 private:
+    // Helper Functions
+    void initializeParameterMaps(); // Declaration added
+
+    // Enum for P-Lock indices for clarity and safety
+    enum PLockIndex {
+        LUMAKEY_VALUE = 0,
+        MIX = 1,
+        HUE = 2,
+        SATURATION = 3,
+        BRIGHTNESS = 4,
+        TEMPORAL_FILTER_MIX = 5,
+        TEMPORAL_FILTER_RESONANCE = 6,
+        SHARPEN_AMOUNT = 7,
+        X_DISPLACE = 8,
+        Y_DISPLACE = 9,
+        Z_DISPLACE = 10,
+        ROTATE = 11,
+        HUE_MODULATION = 12,
+        HUE_OFFSET = 13,
+        HUE_LFO = 14,
+        DELAY_AMOUNT = 15,
+        // Index 16 is currently unused but available if P_LOCK_NUMBER allows
+        UNUSED_16 = 16
+        // Note: Frequency parameters (z, x, y) are currently NOT P-Lockable due to P_LOCK_NUMBER limit
+    };
+
+    // Parameter Info & Mappings
+    std::vector<std::string> parameterIds;
+    std::map<std::string, int> midiChannels;
+    std::map<std::string, int> midiControls;
+    std::map<std::string, std::string> oscAddresses;
+    // Note: Parameter types (float, bool, int) are implicitly handled by setters/getters for now
+
     // Maximum total size of the p_lock array
     static inline const int P_LOCK_SIZE = 240;
 
@@ -344,4 +387,7 @@ private:
     bool vMidiActiveState[P_LOCK_NUMBER];
     bool lfoAmpActiveState[P_LOCK_NUMBER];
     bool lfoRateActiveState[P_LOCK_NUMBER];
+
+    // OSC settings
+    int oscPort = 9000; // Default OSC listening port
 };

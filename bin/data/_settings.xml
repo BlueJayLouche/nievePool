@@ -1,0 +1,356 @@
+<paramManager>
+    <osc>
+        <port>9000</port>
+    </osc>
+    <video>
+        <devicePath>/dev/video0</devicePath>
+        <deviceID>1</deviceID>
+        <format>YUYV</format>
+        <width>1024</width>
+        <height>768</height>
+        <frameRate>60</frameRate>
+    </video>
+    <param id="hueInvert" value="1" midiChannel="1" midiControl="41" oscAddr=""></param>
+    <param id="saturationInvert" value="0" midiChannel="1" midiControl="42" oscAddr=""></param>
+    <param id="brightnessInvert" value="0" midiChannel="1" midiControl="43" oscAddr=""></param>
+    <param id="horizontalMirror" value="0" midiChannel="1" midiControl="44" oscAddr=""></param>
+    <param id="verticalMirror" value="0" midiChannel="1" midiControl="45" oscAddr=""></param>
+    <param id="lumakeyInvert" value="0" midiChannel="1" midiControl="46" oscAddr=""></param>
+    <param id="toroidEnabled" value="1" midiChannel="-1" midiControl="47" oscAddr=""></param>
+    <param id="mirrorModeEnabled" value="0" midiChannel="-1" midiControl="-1" oscAddr=""></param>
+    <param id="wetModeEnabled" value="1" midiChannel="-1" midiControl="48" oscAddr=""></param>
+    <param id="lumakeyValue" value="0.527559042" midiChannel="1" midiControl="120" oscAddr=""></param>
+    <param id="mix" value="0.212598428" midiChannel="1" midiControl="121" oscAddr=""></param>
+    <param id="hue" value="0.800113261" midiChannel="1" midiControl="122" oscAddr=""></param>
+    <param id="saturation" value="0.515679061" midiChannel="1" midiControl="123" oscAddr=""></param>
+    <param id="brightness" value="0.516290307" midiChannel="1" midiControl="124" oscAddr=""></param>
+    <param id="temporalFilterMix" value="0.543307066" midiChannel="1" midiControl="125" oscAddr=""></param>
+    <param id="temporalFilterResonance" value="0.488188982" midiChannel="1" midiControl="126" oscAddr=""></param>
+    <param id="sharpenAmount" value="0.001336346" midiChannel="1" midiControl="16" oscAddr=""></param>
+    <param id="xDisplace" value="-0.099656180" midiChannel="1" midiControl="20" oscAddr=""></param>
+    <param id="yDisplace" value="-0.096659139" midiChannel="1" midiControl="21" oscAddr=""></param>
+    <param id="zDisplace" value="-0.179333434" midiChannel="1" midiControl="22" oscAddr=""></param>
+    <param id="rotate" value="-262.968566895" midiChannel="1" midiControl="23" oscAddr=""></param>
+    <param id="hueModulation" value="2.062500000" midiChannel="1" midiControl="17" oscAddr=""></param>
+    <param id="hueOffset" value="0.622047246" midiChannel="1" midiControl="18" oscAddr=""></param>
+    <param id="hueLFO" value="0.000000000" midiChannel="-1" midiControl="-1" oscAddr=""></param>
+    <param id="zFrequency" value="0.029999999" midiChannel="-1" midiControl="-1" oscAddr=""></param>
+    <param id="xFrequency" value="0.015000000" midiChannel="-1" midiControl="-1" oscAddr=""></param>
+    <param id="yFrequency" value="0.020000000" midiChannel="-1" midiControl="-1" oscAddr=""></param>
+    <param id="delayAmount" value="0" midiChannel="-1" midiControl="-1" oscAddr=""></param>
+    <param id="xLfoAmp" value="0.000000000" midiChannel="-1" midiControl="-1" oscAddr=""></param>
+    <param id="xLfoRate" value="0.000000000" midiChannel="-1" midiControl="-1" oscAddr=""></param>
+    <param id="yLfoAmp" value="0.000000000" midiChannel="-1" midiControl="-1" oscAddr=""></param>
+    <param id="yLfoRate" value="0.000000000" midiChannel="-1" midiControl="-1" oscAddr=""></param>
+    <param id="zLfoAmp" value="0.000000000" midiChannel="-1" midiControl="-1" oscAddr=""></param>
+    <param id="zLfoRate" value="0.000000000" midiChannel="-1" midiControl="-1" oscAddr=""></param>
+    <param id="rotateLfoAmp" value="0.000000000" midiChannel="-1" midiControl="-1" oscAddr=""></param>
+    <param id="rotateLfoRate" value="0.000000000" midiChannel="-1" midiControl="-1" oscAddr=""></param>
+    <param id="vLumakeyValue" value="0.000000000" midiChannel="-1" midiControl="-1" oscAddr=""></param>
+    <param id="vMix" value="0.000000000" midiChannel="1" midiControl="19" oscAddr=""></param>
+    <param id="vHue" value="0.000000000" midiChannel="-1" midiControl="-1" oscAddr=""></param>
+    <param id="vSaturation" value="0.000000000" midiChannel="-1" midiControl="-1" oscAddr=""></param>
+    <param id="vBrightness" value="0.000000000" midiChannel="-1" midiControl="-1" oscAddr=""></param>
+    <param id="vTemporalFilterMix" value="0.000000000" midiChannel="-1" midiControl="-1" oscAddr=""></param>
+    <param id="vTemporalFilterResonance" value="0.000000000" midiChannel="-1" midiControl="-1" oscAddr=""></param>
+    <param id="vSharpenAmount" value="0.000000000" midiChannel="-1" midiControl="-1" oscAddr=""></param>
+    <param id="vXDisplace" value="0.000000000" midiChannel="-1" midiControl="-1" oscAddr=""></param>
+    <param id="vYDisplace" value="0.000000000" midiChannel="-1" midiControl="-1" oscAddr=""></param>
+    <param id="vZDisplace" value="0.000000000" midiChannel="-1" midiControl="-1" oscAddr=""></param>
+    <param id="vRotate" value="0.000000000" midiChannel="-1" midiControl="-1" oscAddr=""></param>
+    <param id="vHueModulation" value="0.000000000" midiChannel="-1" midiControl="-1" oscAddr=""></param>
+    <param id="vHueOffset" value="0.000000000" midiChannel="-1" midiControl="-1" oscAddr=""></param>
+    <param id="vHueLFO" value="0.000000000" midiChannel="-1" midiControl="-1" oscAddr=""></param>
+    <param id="videoReactiveMode" value="0" midiChannel="-1" midiControl="-1" oscAddr=""></param>
+    <param id="lfoAmpMode" value="0" midiChannel="-1" midiControl="-1" oscAddr=""></param>
+    <param id="lfoRateMode" value="0" midiChannel="-1" midiControl="-1" oscAddr=""></param>
+    <plocks>
+        <smoothFactor>0.500000000</smoothFactor>
+        <locks>
+            <lock0>
+                <values>0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0</values>
+            </lock0>
+            <lock1>
+                <values>0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0</values>
+            </lock1>
+            <lock2>
+                <values>0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0</values>
+            </lock2>
+            <lock3>
+                <values>0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0</values>
+            </lock3>
+            <lock4>
+                <values>0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0</values>
+            </lock4>
+            <lock5>
+                <values>0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0</values>
+            </lock5>
+            <lock6>
+                <values>0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0</values>
+            </lock6>
+            <lock7>
+                <values>0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0</values>
+            </lock7>
+            <lock8>
+                <values>0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0</values>
+            </lock8>
+            <lock9>
+                <values>0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0</values>
+            </lock9>
+            <lock10>
+                <values>0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0</values>
+            </lock10>
+            <lock11>
+                <values>0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0</values>
+            </lock11>
+            <lock12>
+                <values>0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0</values>
+            </lock12>
+            <lock13>
+                <values>0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0</values>
+            </lock13>
+            <lock14>
+                <values>0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0</values>
+            </lock14>
+            <lock15>
+                <values>0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0</values>
+            </lock15>
+            <lock16>
+                <values>0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0</values>
+            </lock16>
+        </locks>
+    </plocks>
+    <audioReactivity>
+        <enabled>1</enabled>
+        <normalizationEnabled>1</normalizationEnabled>
+        <sensitivity>1.000000000</sensitivity>
+        <smoothing>0.850000024</smoothing>
+        <numBands>8</numBands>
+        <deviceName>Audient USB Audio ASIO Driver</deviceName>
+        <deviceIndex>0</deviceIndex>
+        <bandRanges>
+            <range>
+                <minBin>1</minBin>
+                <maxBin>2</maxBin>
+            </range>
+            <range>
+                <minBin>3</minBin>
+                <maxBin>5</maxBin>
+            </range>
+            <range>
+                <minBin>6</minBin>
+                <maxBin>11</maxBin>
+            </range>
+            <range>
+                <minBin>12</minBin>
+                <maxBin>46</maxBin>
+            </range>
+            <range>
+                <minBin>47</minBin>
+                <maxBin>92</maxBin>
+            </range>
+            <range>
+                <minBin>93</minBin>
+                <maxBin>139</maxBin>
+            </range>
+            <range>
+                <minBin>140</minBin>
+                <maxBin>278</maxBin>
+            </range>
+            <range>
+                <minBin>279</minBin>
+                <maxBin>511</maxBin>
+            </range>
+        </bandRanges>
+        <mappings>
+            <mapping>
+                <band>0</band>
+                <paramId>z_displace</paramId>
+                <scale>0.500000000</scale>
+                <min>-0.200000003</min>
+                <max>0.200000003</max>
+                <additive>0</additive>
+            </mapping>
+            <mapping>
+                <band>2</band>
+                <paramId>x_displace</paramId>
+                <scale>0.050000001</scale>
+                <min>-0.100000001</min>
+                <max>0.100000001</max>
+                <additive>0</additive>
+            </mapping>
+            <mapping>
+                <band>3</band>
+                <paramId>y_displace</paramId>
+                <scale>0.500000000</scale>
+                <min>-0.100000001</min>
+                <max>0.100000001</max>
+                <additive>0</additive>
+            </mapping>
+            <mapping>
+                <band>4</band>
+                <paramId>hue</paramId>
+                <scale>0.010000000</scale>
+                <min>0.800000012</min>
+                <max>1.200000048</max>
+                <additive>0</additive>
+            </mapping>
+            <mapping>
+                <band>5</band>
+                <paramId>rotate</paramId>
+                <scale>0.050000001</scale>
+                <min>-0.050000001</min>
+                <max>0.050000001</max>
+                <additive>1</additive>
+            </mapping>
+            <mapping>
+                <band>6</band>
+                <paramId>saturation</paramId>
+                <scale>0.500000000</scale>
+                <min>0.500000000</min>
+                <max>1.500000000</max>
+                <additive>0</additive>
+            </mapping>
+            <mapping>
+                <band>7</band>
+                <paramId>brightness</paramId>
+                <scale>0.500000000</scale>
+                <min>0.500000000</min>
+                <max>1.500000000</max>
+                <additive>0</additive>
+            </mapping>
+            <mapping>
+                <band>3</band>
+                <paramId>sharpenAmount</paramId>
+                <scale>0.200000003</scale>
+                <min>0.000000000</min>
+                <max>0.200000003</max>
+                <additive>0</additive>
+            </mapping>
+        </mappings>
+    </audioReactivity>
+    <videoFeedback>
+        <frameBufferLength>10</frameBufferLength>
+        <hdmiAspectRatioEnabled>0</hdmiAspectRatioEnabled>
+    </videoFeedback>
+    <midi>
+        <preferredDevice>Akai MPD32 0</preferredDevice>
+    </midi>
+</paramManager>
+<audioReactivity>
+    <enabled>1</enabled>
+    <normalizationEnabled>1</normalizationEnabled>
+    <sensitivity>1.000000000</sensitivity>
+    <smoothing>0.850000024</smoothing>
+    <numBands>8</numBands>
+    <deviceName>Audient USB Audio ASIO Driver</deviceName>
+    <deviceIndex>0</deviceIndex>
+    <bandRanges>
+        <range>
+            <minBin>1</minBin>
+            <maxBin>2</maxBin>
+        </range>
+        <range>
+            <minBin>3</minBin>
+            <maxBin>5</maxBin>
+        </range>
+        <range>
+            <minBin>6</minBin>
+            <maxBin>11</maxBin>
+        </range>
+        <range>
+            <minBin>12</minBin>
+            <maxBin>46</maxBin>
+        </range>
+        <range>
+            <minBin>47</minBin>
+            <maxBin>92</maxBin>
+        </range>
+        <range>
+            <minBin>93</minBin>
+            <maxBin>139</maxBin>
+        </range>
+        <range>
+            <minBin>140</minBin>
+            <maxBin>278</maxBin>
+        </range>
+        <range>
+            <minBin>279</minBin>
+            <maxBin>511</maxBin>
+        </range>
+    </bandRanges>
+    <mappings>
+        <mapping>
+            <band>0</band>
+            <paramId>z_displace</paramId>
+            <scale>0.500000000</scale>
+            <min>-0.200000003</min>
+            <max>0.200000003</max>
+            <additive>0</additive>
+        </mapping>
+        <mapping>
+            <band>2</band>
+            <paramId>x_displace</paramId>
+            <scale>0.050000001</scale>
+            <min>-0.100000001</min>
+            <max>0.100000001</max>
+            <additive>0</additive>
+        </mapping>
+        <mapping>
+            <band>3</band>
+            <paramId>y_displace</paramId>
+            <scale>0.500000000</scale>
+            <min>-0.100000001</min>
+            <max>0.100000001</max>
+            <additive>0</additive>
+        </mapping>
+        <mapping>
+            <band>4</band>
+            <paramId>hue</paramId>
+            <scale>0.010000000</scale>
+            <min>0.800000012</min>
+            <max>1.200000048</max>
+            <additive>0</additive>
+        </mapping>
+        <mapping>
+            <band>5</band>
+            <paramId>rotate</paramId>
+            <scale>0.050000001</scale>
+            <min>-0.050000001</min>
+            <max>0.050000001</max>
+            <additive>1</additive>
+        </mapping>
+        <mapping>
+            <band>6</band>
+            <paramId>saturation</paramId>
+            <scale>0.500000000</scale>
+            <min>0.500000000</min>
+            <max>1.500000000</max>
+            <additive>0</additive>
+        </mapping>
+        <mapping>
+            <band>7</band>
+            <paramId>brightness</paramId>
+            <scale>0.500000000</scale>
+            <min>0.500000000</min>
+            <max>1.500000000</max>
+            <additive>0</additive>
+        </mapping>
+        <mapping>
+            <band>3</band>
+            <paramId>sharpenAmount</paramId>
+            <scale>0.200000003</scale>
+            <min>0.000000000</min>
+            <max>0.200000003</max>
+            <additive>0</additive>
+        </mapping>
+    </mappings>
+</audioReactivity>
+<version>1.0.0</version>
+<lastSaved>2025-04-18-21-18-28-998</lastSaved>
+<debugEnabled>0</debugEnabled>
+<width>1920</width>
+<height>1080</height>
+<frameRate>30</frameRate>
+<videoInputSource>CAMERA</videoInputSource>
+<videoFilePath>input.mov</videoFilePath>

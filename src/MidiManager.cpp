@@ -300,241 +300,116 @@ void MidiManager::processControlChange(const ofxMidiMessage& message) {
             paramManager->setWetModeEnabled(message.value == 0);
             return;
     }
-    
-    // Handle continuous controls
+
+    // --- Dynamic MIDI Mapping for Continuous Controls ---
     bool videoReactiveMode = paramManager->isVideoReactiveEnabled();
     bool lfoAmpMode = paramManager->isLfoAmpModeEnabled();
     bool lfoRateMode = paramManager->isLfoRateModeEnabled();
-    
-    // Process based on control number
-    switch (message.control) {
-        // Lumakey value (CC 16)
-        case 16:
-            if (videoReactiveMode) {
-                float normalizedValue = message.value / 127.0f;
-                paramManager->setVLumakeyValue(normalizedValue);
+
+    // Iterate through all known parameters to find a match
+    const auto& paramIds = paramManager->getAllParameterIds();
+    for (const auto& id : paramIds) {
+        int mappedChannel = paramManager->getMidiChannel(id);
+        int mappedControl = paramManager->getMidiControl(id);
+
+        // Check if the incoming message matches the mapping for this parameter
+        if (mappedChannel != -1 && mappedControl != -1 &&
+            message.channel == mappedChannel && message.control == mappedControl)
+        {
+            // Found a match, process the value based on parameter ID and mode
+            float normalizedValue = 0.0f;
+            float scale = 1.0f; // Default scale
+
+            // Determine normalization and scaling based on parameter ID
+            // (This logic mirrors the original switch statement's behavior)
+            if (id == "lumakeyValue" || id == "temporalFilterResonance" || id == "sharpenAmount" || id == "delayAmount") {
+                normalizedValue = normalizeValue(message.value, false); // 0 to 1
+            } else if (id == "mix" || id == "hue" || id == "saturation" || id == "brightness" ||
+                       id == "temporalFilterMix" || id == "xDisplace" || id == "yDisplace" ||
+                       id == "zDisplace" || id == "rotate" || id == "hueOffset" || id == "hueLFO" ||
+                       id == "xLfoAmp" || id == "xLfoRate" || id == "yLfoAmp" || id == "yLfoRate" ||
+                       id == "zLfoAmp" || id == "zLfoRate" || id == "rotateLfoAmp" || id == "rotateLfoRate" ||
+                       id == "vMix" || id == "vHue" || id == "vSaturation" || id == "vBrightness" ||
+                       id == "vTemporalFilterMix" || id == "vXDisplace" || id == "vYDisplace" ||
+                       id == "vZDisplace" || id == "vRotate" || id == "vHueOffset" || id == "vHueLFO") {
+                normalizedValue = normalizeValue(message.value, true); // -1 to 1
+            } else if (id == "hueModulation" || id == "vHueModulation") {
+                 normalizedValue = message.value / 32.0f; // Special scaling for hue modulation
             } else {
-                float normalizedValue = message.value / 127.0f;
-                paramManager->setLumakeyValue(normalizedValue);
+                // If it's not a known continuous float/int parameter, skip
+                // (Toggles are handled by the switch above)
+                continue;
             }
-            break;
-            
-        // Mix (CC 17)
-        case 17:
+
+            // Apply scaling factors for specific parameters
+            if (id == "xDisplace" || id == "vXDisplace" || id == "xLfoAmp" || id == "xLfoRate") scale = xScaling.getScale();
+            else if (id == "yDisplace" || id == "vYDisplace" || id == "yLfoAmp" || id == "yLfoRate") scale = yScaling.getScale();
+            else if (id == "zDisplace" || id == "vZDisplace" || id == "zLfoAmp" || id == "zLfoRate") scale = zScaling.getScale();
+            else if (id == "rotate" || id == "vRotate" || id == "rotateLfoAmp" || id == "rotateLfoRate") scale = rotateScaling.getScale();
+            else if (id == "hueModulation" || id == "vHueModulation") scale = hueModScaling.getScale();
+            else if (id == "hueOffset" || id == "vHueOffset") scale = hueOffsetScaling.getScale();
+            else if (id == "hueLFO" || id == "vHueLFO") scale = hueLfoScaling.getScale();
+
+            normalizedValue *= scale;
+
+            // Apply the value using the correct setter based on mode and ID
             if (videoReactiveMode) {
-                float normalizedValue = normalizeValue(message.value, true);
-                paramManager->setVMix(normalizedValue);
+                if (id == "vLumakeyValue") paramManager->setVLumakeyValue(normalizedValue);
+                else if (id == "vMix") paramManager->setVMix(normalizedValue);
+                else if (id == "vHue") paramManager->setVHue(normalizedValue);
+                else if (id == "vSaturation") paramManager->setVSaturation(normalizedValue);
+                else if (id == "vBrightness") paramManager->setVBrightness(normalizedValue);
+                else if (id == "vTemporalFilterMix") paramManager->setVTemporalFilterMix(normalizedValue);
+                else if (id == "vTemporalFilterResonance") paramManager->setVTemporalFilterResonance(normalizedValue);
+                else if (id == "vSharpenAmount") paramManager->setVSharpenAmount(normalizedValue);
+                else if (id == "vXDisplace") paramManager->setVXDisplace(normalizedValue);
+                else if (id == "vYDisplace") paramManager->setVYDisplace(normalizedValue);
+                else if (id == "vZDisplace") paramManager->setVZDisplace(normalizedValue);
+                else if (id == "vRotate") paramManager->setVRotate(normalizedValue);
+                else if (id == "vHueModulation") paramManager->setVHueModulation(normalizedValue);
+                else if (id == "vHueOffset") paramManager->setVHueOffset(normalizedValue);
+                else if (id == "vHueLFO") paramManager->setVHueLFO(normalizedValue);
+                // Note: DelayAmount, LFO Amp/Rate are not affected by videoReactiveMode in original code
+            } else if (lfoAmpMode) {
+                if (id == "xLfoAmp") paramManager->setXLfoAmp(normalizedValue);
+                else if (id == "yLfoAmp") paramManager->setYLfoAmp(normalizedValue);
+                else if (id == "zLfoAmp") paramManager->setZLfoAmp(normalizedValue);
+                else if (id == "rotateLfoAmp") paramManager->setRotateLfoAmp(normalizedValue);
+                // Note: Other params not affected by lfoAmpMode
+            } else if (lfoRateMode) {
+                if (id == "xLfoRate") paramManager->setXLfoRate(normalizedValue);
+                else if (id == "yLfoRate") paramManager->setYLfoRate(normalizedValue);
+                else if (id == "zLfoRate") paramManager->setZLfoRate(normalizedValue);
+                else if (id == "rotateLfoRate") paramManager->setRotateLfoRate(normalizedValue);
+                 // Note: Other params not affected by lfoRateMode
             } else {
-                float normalizedValue = normalizeValue(message.value, true);
-                paramManager->setMix(normalizedValue);
+                // Normal mode
+                if (id == "lumakeyValue") paramManager->setLumakeyValue(normalizedValue);
+                else if (id == "mix") paramManager->setMix(normalizedValue);
+                else if (id == "hue") paramManager->setHue(normalizedValue);
+                else if (id == "saturation") paramManager->setSaturation(normalizedValue);
+                else if (id == "brightness") paramManager->setBrightness(normalizedValue);
+                else if (id == "temporalFilterMix") paramManager->setTemporalFilterMix(normalizedValue);
+                else if (id == "temporalFilterResonance") paramManager->setTemporalFilterResonance(normalizedValue);
+                else if (id == "sharpenAmount") paramManager->setSharpenAmount(normalizedValue);
+                else if (id == "xDisplace") paramManager->setXDisplace(normalizedValue);
+                else if (id == "yDisplace") paramManager->setYDisplace(normalizedValue);
+                else if (id == "zDisplace") paramManager->setZDisplace(normalizedValue);
+                else if (id == "rotate") paramManager->setRotate(normalizedValue);
+                else if (id == "hueModulation") paramManager->setHueModulation(normalizedValue);
+                else if (id == "hueOffset") paramManager->setHueOffset(normalizedValue);
+                else if (id == "hueLFO") paramManager->setHueLFO(normalizedValue);
+                else if (id == "delayAmount") paramManager->setDelayAmount(static_cast<int>(normalizedValue * 100)); // Scale int delay
+                // Note: LFO Amp/Rate setters are called directly in lfoAmp/Rate modes above
             }
-            break;
-            
-        // Hue (CC 18)
-        case 18:
-            if (videoReactiveMode) {
-                float normalizedValue = normalizeValue(message.value, true);
-                paramManager->setVHue(normalizedValue);
-            } else {
-                float normalizedValue = normalizeValue(message.value, true);
-                paramManager->setHue(normalizedValue);
-            }
-            break;
-            
-        // Saturation (CC 19)
-        case 19:
-            if (videoReactiveMode) {
-                float normalizedValue = normalizeValue(message.value, true);
-                paramManager->setVSaturation(normalizedValue);
-            } else {
-                float normalizedValue = normalizeValue(message.value, true);
-                paramManager->setSaturation(normalizedValue);
-            }
-            break;
-            
-        // Brightness (CC 20)
-        case 20:
-            if (videoReactiveMode) {
-                float normalizedValue = normalizeValue(message.value, true);
-                paramManager->setVBrightness(normalizedValue);
-            } else {
-                float normalizedValue = normalizeValue(message.value, true);
-                paramManager->setBrightness(normalizedValue);
-            }
-            break;
-            
-        // Temporal filter mix (CC 21)
-        case 21:
-            if (videoReactiveMode) {
-                float normalizedValue = normalizeValue(message.value, true);
-                paramManager->setVTemporalFilterMix(normalizedValue);
-            } else {
-                float normalizedValue = normalizeValue(message.value, true);
-                paramManager->setTemporalFilterMix(normalizedValue);
-            }
-            break;
-            
-        // Temporal filter resonance (CC 22)
-        case 22:
-            if (videoReactiveMode) {
-                float normalizedValue = message.value / 127.0f;
-                paramManager->setVTemporalFilterResonance(normalizedValue);
-            } else {
-                float normalizedValue = message.value / 127.0f;
-                paramManager->setTemporalFilterResonance(normalizedValue);
-            }
-            break;
-            
-        // Sharpen amount (CC 23)
-        case 23:
-            if (videoReactiveMode) {
-                float normalizedValue = message.value / 127.0f;
-                paramManager->setVSharpenAmount(normalizedValue);
-            } else {
-                float normalizedValue = message.value / 127.0f;
-                paramManager->setSharpenAmount(normalizedValue);
-            }
-            break;
-            
-        // X displacement (CC 120)
-        case 120:
-            {
-                float scale = xScaling.getScale();
-                
-                if (lfoAmpMode) {
-                    float normalizedValue = normalizeValue(message.value, true) * scale;
-                    paramManager->setXLfoAmp(normalizedValue);
-                } else if (lfoRateMode) {
-                    float normalizedValue = normalizeValue(message.value, true) * scale;
-                    paramManager->setXLfoRate(normalizedValue);
-                } else if (videoReactiveMode) {
-                    float normalizedValue = normalizeValue(message.value, true) * scale;
-                    paramManager->setVXDisplace(normalizedValue);
-                } else {
-                    float normalizedValue = normalizeValue(message.value, true) * scale;
-                    paramManager->setXDisplace(normalizedValue);
-                }
-            }
-            break;
-            
-        // Y displacement (CC 121)
-        case 121:
-            {
-                float scale = yScaling.getScale();
-                
-                if (lfoAmpMode) {
-                    float normalizedValue = normalizeValue(message.value, true) * scale;
-                    paramManager->setYLfoAmp(normalizedValue);
-                } else if (lfoRateMode) {
-                    float normalizedValue = normalizeValue(message.value, true) * scale;
-                    paramManager->setYLfoRate(normalizedValue);
-                } else if (videoReactiveMode) {
-                    float normalizedValue = normalizeValue(message.value, true) * scale;
-                    paramManager->setVYDisplace(normalizedValue);
-                } else {
-                    float normalizedValue = normalizeValue(message.value, true) * scale;
-                    paramManager->setYDisplace(normalizedValue);
-                }
-            }
-            break;
-            
-        // Z displacement (CC 122)
-        case 122:
-            {
-                float scale = zScaling.getScale();
-                
-                if (lfoAmpMode) {
-                    float normalizedValue = normalizeValue(message.value, true) * scale;
-                    paramManager->setZLfoAmp(normalizedValue);
-                } else if (lfoRateMode) {
-                    float normalizedValue = normalizeValue(message.value, true) * scale;
-                    paramManager->setZLfoRate(normalizedValue);
-                } else if (videoReactiveMode) {
-                    float normalizedValue = normalizeValue(message.value, true) * scale;
-                    paramManager->setVZDisplace(normalizedValue);
-                } else {
-                    float normalizedValue = normalizeValue(message.value, true) * scale;
-                    paramManager->setZDisplace(normalizedValue);
-                }
-            }
-            break;
-            
-        // Rotation (CC 123)
-        case 123:
-            {
-                float scale = rotateScaling.getScale();
-                
-                if (lfoAmpMode) {
-                    float normalizedValue = normalizeValue(message.value, true) * scale;
-                    paramManager->setRotateLfoAmp(normalizedValue);
-                } else if (lfoRateMode) {
-                    float normalizedValue = normalizeValue(message.value, true) * scale;
-                    paramManager->setRotateLfoRate(normalizedValue);
-                } else if (videoReactiveMode) {
-                    float normalizedValue = normalizeValue(message.value, true) * scale;
-                    paramManager->setVRotate(normalizedValue);
-                } else {
-                    float normalizedValue = normalizeValue(message.value, true) * scale;
-                    paramManager->setRotate(normalizedValue);
-                }
-            }
-            break;
-            
-        // Hue modulation (CC 124)
-        case 124:
-            {
-                float scale = hueModScaling.getScale();
-                
-                if (videoReactiveMode) {
-                    float normalizedValue = message.value / (32.0f * scale);
-                    paramManager->setVHueModulation(normalizedValue);
-                } else {
-                    float normalizedValue = message.value / (32.0f * scale);
-                    paramManager->setHueModulation(normalizedValue);
-                }
-            }
-            break;
-            
-        // Hue offset (CC 125)
-        case 125:
-            {
-                float scale = hueOffsetScaling.getScale();
-                
-                if (videoReactiveMode) {
-                    float normalizedValue = normalizeValue(message.value, true) * scale;
-                    paramManager->setVHueOffset(normalizedValue);
-                } else {
-                    float normalizedValue = normalizeValue(message.value, true) * scale;
-                    paramManager->setHueOffset(normalizedValue);
-                }
-            }
-            break;
-            
-        // Hue LFO (CC 126)
-        case 126:
-            {
-                float scale = hueLfoScaling.getScale();
-                
-                if (videoReactiveMode) {
-                    float normalizedValue = normalizeValue(message.value, true) * scale;
-                    paramManager->setVHueLFO(normalizedValue);
-                } else {
-                    float normalizedValue = normalizeValue(message.value, true) * scale;
-                    paramManager->setHueLFO(normalizedValue);
-                }
-            }
-            break;
-            
-        // Delay amount (CC 127)
-        case 127:
-            {
-                if (!videoReactiveMode) {
-                    float normalizedValue = message.value / 127.0f;
-                    paramManager->setDelayAmount(normalizedValue * 100); // Scale to reasonable range
-                }
-            }
-            break;
+
+            // Found and processed the mapping, no need to check further
+            return;
+        }
     }
+
+    // If no mapping was found for this CC message, log it (optional)
+    // ofLogVerbose("MidiManager") << "Unhandled MIDI CC: Ch=" << message.channel << " Ctrl=" << message.control << " Val=" << message.value;
 }
 
 float MidiManager::normalizeValue(int value, bool centered) const {

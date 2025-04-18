@@ -1,0 +1,36 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "${workspaceRoot}/../../../../libs/openFrameworks"
+		},
+		{
+			"path": "${workspaceRoot}/../..\\..\\..\\addons\\ofxFft"
+		},
+		{
+			"path": "${workspaceRoot}/../..\\..\\..\\addons\\ofxMidi"
+		},
+		{
+			"path": "${workspaceRoot}/../..\\..\\..\\addons\\ofxXmlSettings"
+		},
+		{
+			"path": "${workspaceRoot}/../..\\..\\..\\addons\\ofxFft"
+		},
+		{
+			"path": "${workspaceRoot}/../..\\..\\..\\addons\\ofxMidi"
+		},
+		{
+			"path": "${workspaceRoot}/../..\\..\\..\\addons\\ofxNDI"
+		},
+		{
+			"path": "${workspaceRoot}/../..\\..\\..\\addons\\ofxOsc"
+		},
+		{
+			"path": "${workspaceRoot}/../..\\..\\..\\addons\\ofxXmlSettings"
+		}
+	],
+	"openFrameworksProjectGeneratorVersion": "0.103.0",
+	"settings": {}
+}

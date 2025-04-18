@@ -17,24 +17,15 @@ public:
     ~VideoFeedbackManager(); // Explicitly declare the destructor
     
     // Core methods
-    void setup(int width, int height);
-    void update();
-    void draw();
+    void setup(int width, int height); // Setup FBOs and initial state
+    // void update(const ofTexture& inputTexture); // Removed - Use processInputTexture instead
+    void draw(); // Draw the final output
     
     // FBO management
     void allocateFbos(int width, int height);
     void clearFbos();
     
-    // Camera handling
-    void setupCamera(int width, int height);
-    void updateCamera();
-    void updateCameraTexture(); // New method for threaded camera updates
-    
-    // Camera
-    ofVideoGrabber camera;
-    bool cameraInitialized = false;
-    
-    // Get/set for frame buffer size
+    // Get/set for frame buffer size (Keep these)
     int getFrameBufferLength() const;
     void setFrameBufferLength(int length);
     
@@ -51,8 +42,26 @@ public:
     // Toggle HD aspect ratio correction
     bool isHdmiAspectRatioEnabled() const;
     void setHdmiAspectRatioEnabled(bool enabled);
+
+    // Public getter for the final output texture
+    const ofTexture& getOutputTexture() const;
+
+    // Camera device info accessors (needed by ofApp)
+    std::vector<std::string> getVideoDeviceList() const;
+    std::string getCurrentVideoDeviceName() const;
+    int getCurrentVideoDeviceIndex() const;
+    bool selectVideoDevice(int deviceIndex);
+    bool selectVideoDevice(const std::string& deviceName);
+    void updateCamera(); // Add back declaration
     
-    // Lazy allocation for frame buffers
+    // Make processing and frame index public
+    void processMainPipeline(const ofTexture& inputTexture); // Renamed from processInputTexture for consistency
+    void incrementFrameIndex();
+
+    // Add getter for camera status
+    bool isCameraInitialized() const { return cameraInitialized; }
+
+    // Lazy allocation for frame buffers (Keep this internal detail)
     void allocatePastFrameIfNeeded(int index) {
         if (index >= 0 && index < frameBufferLength && !pastFramesAllocated[index]) {
             pastFrames[index].allocate(fboSettings);
@@ -63,22 +72,15 @@ public:
         }
     }
     
-    // Video device management methods
-    void listVideoDevices();
-    std::vector<std::string> getVideoDeviceList() const;
-    int getCurrentVideoDeviceIndex() const;
-    std::string getCurrentVideoDeviceName() const;
-    bool selectVideoDevice(int deviceIndex);
-    bool selectVideoDevice(const std::string& deviceName);
-    
-    // XML settings
-    void saveToXml(ofxXmlSettings& xml) const;
+    // XML settings (Keep for buffer length, aspect ratio, etc.)
+    void saveToXml(ofxXmlSettings& xml) const; 
     void loadFromXml(ofxXmlSettings& xml);
     
+    // Add back getter for aspectRatioFbo
     ofFbo& getAspectRatioFbo() { return aspectRatioFbo; }
     
-    // Additional helpful accessor methods
-    ofFbo& getMainFbo() { return mainFbo; }
+    // Accessors for internal FBOs (might still be useful for debugging or advanced effects)
+    ofFbo& getMainFbo() { return mainFbo; } 
     ofFbo& getSharpenFbo() { return sharpenFbo; }
     ofFbo& getDryFrameBuffer() { return dryFrameBuffer; }
     ofFbo& getPastFrame(int index) {
@@ -93,8 +95,10 @@ private:
     static const int DEFAULT_FRAME_BUFFER_LENGTH = 60;
     
     // Helper methods
-    void incrementFrameIndex();
-    void processMainPipeline();
+    void listVideoDevices(); // Add back declaration
+    void setupCamera(int width, int height); // Add back declaration
+    // void incrementFrameIndex(); // Moved to public
+    // void processMainPipeline(const ofTexture& inputTexture); // Moved to public
     void checkGLError(const std::string& operation);
     
     // Determine optimal frame buffer length based on platform
@@ -141,8 +145,10 @@ private:
     // Frame counting and delay management
     unsigned int frameCount = 0;
     int currentFrameIndex = 0;
-    
-    // Video device management
+
+    // Add back camera-related members
+    ofVideoGrabber camera;
+    bool cameraInitialized = false;
     std::vector<ofVideoDevice> videoDevices;
-    int currentVideoDeviceIndex = 0;
+    int currentVideoDeviceIndex = -1;
 };

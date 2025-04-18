@@ -47,8 +47,8 @@ public:
     AudioReactivityManager(ParameterManager* paramManager);
     ~AudioReactivityManager();
     
-    // Core methods
-    void setup(bool performanceMode = false);
+    // Setup and lifecycle
+    void setup(ParameterManager* paramManager, bool performanceMode = false); // Added paramManager argument
     void update();
     void exit();
     
@@ -116,6 +116,7 @@ private:
     float getParameterValue(const std::string& paramId) const;
     void applyParameterValue(const std::string& paramId, float value, bool additive);
     void setupDefaultBandRanges();
+    void addDefaultMappings(); // Added declaration for default mappings helper
     
     // Audio settings
     bool enabled;

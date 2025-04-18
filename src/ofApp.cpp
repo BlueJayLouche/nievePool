@@ -4,219 +4,207 @@
 void ofApp::setup() {
     // Check for platform-specific settings
     #if defined(TARGET_LINUX) && (defined(__arm__) || defined(__aarch64__))
-        // Enable performance mode by default on Raspberry Pi
         bool performanceMode = true;
         int targetFramerate = 24;
         bool platformIsRaspberryPi = true;
+        // Platform flags for later use
+        bool performanceMode = true; 
+        bool platformIsRaspberryPi = true;
         ofLogNotice("ofApp") << "Detected Raspberry Pi: enabling performance mode";
     #else
+        // Platform flags for later use
         bool performanceMode = false;
-        int targetFramerate = 30;
         bool platformIsRaspberryPi = false;
     #endif
     
-    // Set framerate based on platform
-    ofSetFrameRate(targetFramerate);
+    // Framerate will be set after loading settings
     
     // Continue with normal setup...
-    ofSetVerticalSync(true);
+    ofSetVerticalSync(true); // Keep VSync setting early
     ofBackground(0);
     ofHideCursor();
     
     // Initialize parameter manager first
     paramManager = std::make_unique<ParameterManager>();
-    paramManager->setup();
+    paramManager->setup(); // This now loads settings including mappings
     
     // Set performance mode based on platform
     if (platformIsRaspberryPi) {
         paramManager->setPerformanceModeEnabled(true);
-        paramManager->setPerformanceScale(30);  // Lower resolution in performance mode
-        paramManager->setHighQualityEnabled(false);
-        ofSetFrameRate(24);  // Lower framerate for better performance
+        paramManager->setPerformanceScale(30); 
+    paramManager->setHighQualityEnabled(false);
+        // Don't set framerate here anymore
     } else {
-        ofSetFrameRate(30);
+        // Don't set framerate here anymore
     }
     
-    // Check if settings file exists and validate structure
+    // Check if settings file exists and validate structure (Keep this?)
     ofFile settingsFile(ofToDataPath("settings.xml"));
     bool resetNeeded = false;
-    
     if (settingsFile.exists()) {
-        // Load file to check structure
         ofxXmlSettings testXml;
         if (testXml.loadFile(ofToDataPath("settings.xml"))) {
-            // Check for nested paramManager tags
             if (testXml.pushTag("paramManager")) {
                 if (testXml.tagExists("paramManager")) {
-                    // Found nested paramManager, need reset
                     resetNeeded = true;
                     ofLogWarning("ofApp") << "Nested paramManager tags detected, resetting settings file";
                 }
                 testXml.popTag();
             }
         } else {
-            // Couldn't load file, reset it
             resetNeeded = true;
             ofLogWarning("ofApp") << "Could not parse settings.xml, resetting file";
         }
     }
-    
     if (resetNeeded || !settingsFile.exists()) {
         resetSettingsFile();
+        paramManager->loadSettings(); // Reload after reset
     }
     
-    // Load app-level settings first (outside the paramManager tag)
+    // Load app-level settings first
     ofxXmlSettings xml;
     if (xml.loadFile(ofToDataPath("settings.xml"))) {
-        // First try to load app settings from root level
         if (xml.tagExists("app")) {
             xml.pushTag("app");
-            
-            // Load application settings
             debugEnabled = xml.getValue("debugEnabled", false);
             configWidth = xml.getValue("width", 1024);
             configHeight = xml.getValue("height", 768);
-            configFrameRate = xml.getValue("frameRate", 30);
+            // Load framerate from XML, default to 30 if missing/invalid later
+            configFrameRate = xml.getValue("frameRate", 30); 
             
-            xml.popTag(); // pop app tag
-            
-            // Set framerate and window size based on config
-            ofSetFrameRate(configFrameRate);
-            ofSetWindowShape(configWidth, configHeight);
+            // Load video input settings
+            std::string sourceStr = xml.getValue("videoInputSource", "CAMERA");
+            if (sourceStr == "NDI") {
+                currentInputSource = NDI;
+            } else if (sourceStr == "VIDEO_FILE") {
+                currentInputSource = VIDEO_FILE;
+            } else {
+                currentInputSource = CAMERA; // Default
+            }
+            videoFilePath = xml.getValue("videoFilePath", videoFilePath);
+            currentNdiSourceIndex = xml.getValue("ndiSourceIndex", 0); // Load NDI source index, default to 0
+            ofLogNotice("ofApp::setup") << "Initial video input source: " << sourceStr;
+            ofLogNotice("ofApp::setup") << "Video file path: " << videoFilePath;
+            ofLogNotice("ofApp::setup") << "Loaded NDI source index: " << currentNdiSourceIndex;
+
+            xml.popTag(); // pop app
+        } else {
+             ofLogWarning("ofApp::setup") << "No <app> tag found in settings.xml, using default app settings.";
         }
+    } else {
+         ofLogWarning("ofApp::setup") << "Could not load settings.xml, using default app settings.";
+         // Ensure configFrameRate has a default if XML load failed
+         configFrameRate = 30; 
     }
+
+    // --- Apply Final Framerate ---
+    // Validate loaded/default framerate, apply platform defaults only if invalid
+    if (configFrameRate <= 0) {
+        ofLogWarning("ofApp::setup") << "Invalid frameRate (" << configFrameRate << ") loaded or defaulted. Applying platform default.";
+        #if defined(TARGET_LINUX) && (defined(__arm__) || defined(__aarch64__))
+            configFrameRate = 24; // RPi default
+        #else
+            configFrameRate = 30; // Non-RPi default
+        #endif
+    }
+    ofLogNotice("ofApp::setup") << "Setting final frame rate to: " << configFrameRate;
+    ofSetFrameRate(configFrameRate); 
+
+    // Set window shape 
+    ofSetWindowShape(configWidth, configHeight);
     
     // Continue with the standard setup
-    ofSetVerticalSync(true);
+    // ofSetVerticalSync(true); // Moved earlier
     ofBackground(0);
     ofHideCursor();
-    
     ofDisableArbTex();
-    
-    // Initialize parameter manager first
-    paramManager = std::make_unique<ParameterManager>();
-    paramManager->setup();
     
     // Initialize shader manager
     shaderManager = std::make_unique<ShaderManager>();
     shaderManager->setup();
     
-    // Initialize video feedback manager with references to other managers
+    // Initialize video feedback manager (FBOs etc.)
     videoManager = std::make_unique<VideoFeedbackManager>(paramManager.get(), shaderManager.get());
-    videoManager->setup(configWidth, configHeight);  // Use config dimensions
+    videoManager->setup(configWidth, configHeight);  
+
+    // --- Setup Input Sources ---
     
-    // Initialize MIDI manager with reference to parameter manager
-    midiManager = std::make_unique<MidiManager>(paramManager.get());
-    midiManager->setup();
-    
-    // Initialize Audio Reactivity manager with reference to parameter manager
-    audioManager = std::make_unique<AudioReactivityManager>(paramManager.get());
-    audioManager->setup();
-    
-    // Try to load settings from XML with proper structure
-    if (xml.loadFile(ofToDataPath("settings.xml"))) {
-        ofLogNotice("ofApp") << "Loading settings from settings.xml";
-        
-        try {
-            // Load parameter manager settings first
-            paramManager->loadFromXml(xml);
-            
-            // For other managers, we need to navigate to the paramManager tag first
-            if (xml.pushTag("paramManager")) {
-                // Load audio settings if present
-                if (xml.tagExists("audioReactivity")) {
-                    audioManager->loadFromXml(xml);
-                } else {
-                    ofLogWarning("ofApp") << "No audioReactivity section found in settings";
-                }
-                
-                // Load video settings if present
-                if (xml.tagExists("videoFeedback")) {
-                    videoManager->loadFromXml(xml);
-                } else {
-                    ofLogWarning("ofApp") << "No videoFeedback section found in settings";
-                }
-                
-                // Load MIDI settings if present
-                if (xml.tagExists("midi")) {
-                    midiManager->loadSettings(xml);
-                } else {
-                    ofLogWarning("ofApp") << "No midi section found in settings";
-                }
-                
-                xml.popTag(); // Pop paramManager tag
-            } else {
-                ofLogWarning("ofApp") << "No paramManager tag found in settings.xml";
-            }
-        } catch (const std::exception& e) {
-            ofLogError("ofApp") << "Exception loading settings: " << e.what();
-        }
-    } else {
-        ofLogNotice("ofApp") << "No settings.xml found or couldn't load it, using defaults";
-        
-        // Add default audio mappings if none exist
-        if (audioManager->getMappings().empty()) {
-            setupDefaultAudioMappings();
+    // 1. Camera Setup (Now handled mostly within VideoFeedbackManager)
+    // cameraInitialized = videoManager->isCameraInitialized(); // Get status from videoManager
+
+    // 2. NDI Setup 
+    // NOTE: Removing explicit CreateFinder/FindSenders here. 
+    // GetSenderCount() in keyPressed should handle finding sources implicitly.
+    // We still need to attempt an initial connection if NDI is the starting source.
+    if (currentInputSource == NDI) {
+        // Attempt to connect to the source index loaded from settings
+        // Note: currentNdiSourceIndex is already loaded from XML earlier in setup()
+        ofLogNotice("ofApp::setup") << "Attempting initial connection to NDI source index loaded from settings: " << currentNdiSourceIndex;
+        if (!ndiReceiver.CreateReceiver(currentNdiSourceIndex)) {
+             ofLogWarning("ofApp::setup") << "Failed to create initial NDI receiver for source index " << currentNdiSourceIndex << ". Check if source is available.";
+        } else {
+             ofLogNotice("ofApp::setup") << "Successfully created initial NDI receiver for source index " << currentNdiSourceIndex;
         }
     }
+    // Allocate texture regardless of initial connection success
+    ndiTexture.allocate(configWidth, configHeight, GL_RGBA); 
+
+    // 3. Video Player Setup
+    ofLogNotice("ofApp::setup") << "Setting up video player with file: " << videoFilePath;
+    videoPlayer.load(videoFilePath);
+    videoPlayer.setLoopState(OF_LOOP_NORMAL);
+    if (currentInputSource == VIDEO_FILE) {
+        videoPlayer.play(); 
+    }
+
+    // Allocate the texture that holds the currently selected input for debug preview
+    currentInputTexture.allocate(videoManager->getMainFbo().getWidth(), videoManager->getMainFbo().getHeight(), GL_RGBA);
+    ofLogNotice("ofApp::setup") << "Allocated currentInputTexture: " << currentInputTexture.getWidth() << "x" << currentInputTexture.getHeight();
+
+    // Initialize MIDI manager 
+    midiManager = std::make_unique<MidiManager>(paramManager.get());
+    midiManager->setup(); 
     
+    // Initialize Audio Reactivity manager
+    audioManager = std::make_unique<AudioReactivityManager>(paramManager.get());
+    // Pass paramManager and performanceMode to setup as required by the updated signature
+    audioManager->setup(paramManager.get(), performanceMode); 
+    
+    // Load remaining manager settings (VideoFeedbackManager) from XML
+    if (xml.loadFile(ofToDataPath("settings.xml"))) {
+         if (xml.pushTag("paramManager")) {
+             // Load VideoFeedbackManager settings if tag exists
+             if (xml.tagExists("videoFeedback")) {
+                 videoManager->loadFromXml(xml);
+             }
+             // Load AudioReactivityManager settings if tag exists
+             if (xml.tagExists("audioReactivity")) {
+                 audioManager->loadFromXml(xml);
+             }
+             // Load MidiManager settings if tag exists
+             if (xml.tagExists("midi")) {
+                 midiManager->loadSettings(xml);
+             }
+             xml.popTag(); // Pop paramManager
+         }
+    }
+
     // Initialize performance monitoring
     for (int i = 0; i < 60; i++) {
         frameRateHistory[i] = 0.0f;
     }
+
+    // --- OSC Setup --- 
+    int currentOscPort = paramManager->getOscPort(); // Get port from ParameterManager
+    ofLogNotice("ofApp::setup") << "Listening for OSC messages on port " << currentOscPort;
+    oscReceiver.setup(currentOscPort);
 }
 
-// Add a helper method for default audio mappings
-void ofApp::setupDefaultAudioMappings() {
-    ofLogNotice("ofApp") << "Setting up default audio mappings";
-    
-    // Sub bass affects z_displace (create depth pulsing)
-    AudioReactivityManager::BandMapping bassMapping;
-    bassMapping.band = 0;  // Sub bass
-    bassMapping.paramId = "z_displace";
-    bassMapping.scale = 0.5f;
-    bassMapping.min = -0.2f;
-    bassMapping.max = 0.2f;
-    bassMapping.additive = false;
-    audioManager->addMapping(bassMapping);
-    
-    // Add more default mappings...
-    
-    // Low mids affect x_displace
-    AudioReactivityManager::BandMapping lowMidsMapping;
-    lowMidsMapping.band = 2;  // Low mids
-    lowMidsMapping.paramId = "x_displace";
-    lowMidsMapping.scale = 0.05f;
-    lowMidsMapping.min = -0.1f;
-    lowMidsMapping.max = 0.1f;
-    lowMidsMapping.additive = false;
-    audioManager->addMapping(lowMidsMapping);
-    
-    // Mids affect y_displace
-    AudioReactivityManager::BandMapping midsMapping;
-    midsMapping.band = 3;  // Mids
-    midsMapping.paramId = "y_displace";
-    midsMapping.scale = 0.5f;
-    midsMapping.min = -0.1f;
-    midsMapping.max = 0.1f;
-    midsMapping.additive = false;
-    audioManager->addMapping(midsMapping);
-    
-    // High mids affect hue
-    AudioReactivityManager::BandMapping highMidsMapping;
-    highMidsMapping.band = 4;  // High mids
-    highMidsMapping.paramId = "hue";
-    highMidsMapping.scale = 0.01f;
-    highMidsMapping.min = 0.8f;
-    highMidsMapping.max = 1.2f;
-    highMidsMapping.additive = false;  // Direct setting works better for hue
-    audioManager->addMapping(highMidsMapping);
-}
+// Removed ofApp::setupDefaultAudioMappings() - Logic moved to AudioReactivityManager::addDefaultMappings()
 
 void ofApp::resetSettingsFile() {
     ofxXmlSettings xml;
     
-    // Create a clean XML structure
     xml.addTag("app");
     xml.pushTag("app");
     xml.setValue("version", "1.0.0");
@@ -225,12 +213,14 @@ void ofApp::resetSettingsFile() {
     xml.setValue("width", configWidth);
     xml.setValue("height", configHeight);
     xml.setValue("frameRate", configFrameRate);
-    xml.popTag(); // pop app
+    xml.setValue("videoInputSource", "CAMERA"); 
+    xml.setValue("videoFilePath", "input.mov");
+    xml.setValue("ndiSourceIndex", 0); // Add default NDI source index on reset
+    xml.popTag(); 
     
-    // Add empty paramManager tag
     xml.addTag("paramManager");
+    // ParameterManager::saveToXml will populate this on next save
     
-    // Save with error handling
     try {
         bool saved = xml.saveFile(ofToDataPath("settings.xml"));
         ofLogNotice("ofApp") << "Settings file reset " << (saved ? "successfully" : "unsuccessfully");
@@ -243,47 +233,150 @@ void ofApp::resetSettingsFile() {
 void ofApp::update() {
     float startTime = ofGetElapsedTimef();
     
-    // Update managers
     paramManager->update();
     midiManager->update();
-    
-    // Debug camera status occasionally
-    static int debugCounter = 0;
-    if (debugEnabled && ++debugCounter % 300 == 0) {
-        if (videoManager->cameraInitialized && videoManager->camera.isInitialized()) {
-            ofLogNotice("ofApp") << "Camera is initialized, dimensions: "
-                               << videoManager->camera.getWidth() << "x"
-                               << videoManager->camera.getHeight();
-            ofLogNotice("ofApp") << "New frame available: "
-                               << (videoManager->camera.isFrameNew() ? "Yes" : "No");
-        } else {
-            ofLogWarning("ofApp") << "Camera NOT initialized";
+    audioManager->update(); // Update audio manager
+
+    // --- Update Input Source and Process Video ---
+    if (currentInputSource == CAMERA) {
+        videoManager->updateCamera(); // Updates internal camera and draws to aspectRatioFbo
+        // Check if the camera inside videoManager is ready and its FBO has content
+        if (videoManager->isCameraInitialized() && videoManager->getAspectRatioFbo().isAllocated()) { // Use public getter
+            const auto& camTex = videoManager->getAspectRatioFbo().getTexture();
+            if (camTex.isAllocated()) {
+                videoManager->processMainPipeline(camTex); // Use renamed public method
+
+                // Update debug preview texture
+                ofPixels pixels;
+                videoManager->getAspectRatioFbo().readToPixels(pixels);
+                if (pixels.isAllocated()) {
+                    currentInputTexture.loadData(pixels);
+                }
+            }
+        }
+    } else if (currentInputSource == NDI) {
+        if (ndiReceiver.ReceiveImage(ndiTexture)) { // Check for new NDI frame
+             if (ndiTexture.isAllocated()) {
+                 videoManager->processMainPipeline(ndiTexture); // Use renamed public method
+
+                 // Update debug preview texture
+                 ofPixels ndiPixels;
+                 ndiTexture.readToPixels(ndiPixels);
+                 if(ndiPixels.isAllocated()) {
+                    currentInputTexture.loadData(ndiPixels);
+                 }
+             }
+        }
+    } else if (currentInputSource == VIDEO_FILE) {
+        videoPlayer.update();
+        if (videoPlayer.isFrameNew() && videoPlayer.isLoaded() && videoPlayer.getTexture().isAllocated()) {
+             const auto& vidTex = videoPlayer.getTexture();
+             videoManager->processMainPipeline(vidTex); // Use renamed public method
+
+             // Update debug preview texture
+             currentInputTexture.loadData(videoPlayer.getPixels());
+         }
+    }
+
+    // Increment video manager's frame index for feedback loop timing
+    videoManager->incrementFrameIndex();
+
+    // --- OSC Update ---
+    while (oscReceiver.hasWaitingMessages()) {
+        ofxOscMessage m;
+        oscReceiver.getNextMessage(m);
+        string incomingAddr = m.getAddress();
+        bool handled = false;
+
+        for (const auto& paramId : paramManager->getAllParameterIds()) {
+            std::string configuredAddr = paramManager->getOscAddress(paramId);
+            if (!configuredAddr.empty() && configuredAddr == incomingAddr) {
+                if (m.getNumArgs() == 1) {
+                    try {
+                        if (m.getArgType(0) == OFXOSC_TYPE_FLOAT) {
+                            float value = m.getArgAsFloat(0);
+                            if (paramId == "lumakeyValue") paramManager->setLumakeyValue(value);
+                            else if (paramId == "mix") paramManager->setMix(value);
+                            else if (paramId == "hue") paramManager->setHue(value);
+                            else if (paramId == "saturation") paramManager->setSaturation(value);
+                            else if (paramId == "brightness") paramManager->setBrightness(value);
+                            else if (paramId == "temporalFilterMix") paramManager->setTemporalFilterMix(value);
+                            else if (paramId == "temporalFilterResonance") paramManager->setTemporalFilterResonance(value);
+                            else if (paramId == "sharpenAmount") paramManager->setSharpenAmount(value);
+                            else if (paramId == "xDisplace") paramManager->setXDisplace(value);
+                            else if (paramId == "yDisplace") paramManager->setYDisplace(value);
+                            else if (paramId == "zDisplace") paramManager->setZDisplace(value);
+                            else if (paramId == "zFrequency") paramManager->setZFrequency(value);
+                            else if (paramId == "xFrequency") paramManager->setXFrequency(value);
+                            else if (paramId == "yFrequency") paramManager->setYFrequency(value);
+                            else if (paramId == "rotate") paramManager->setRotate(value);
+                            else if (paramId == "hueModulation") paramManager->setHueModulation(value);
+                            else if (paramId == "hueOffset") paramManager->setHueOffset(value);
+                            else if (paramId == "hueLFO") paramManager->setHueLFO(value);
+                            else if (paramId == "xLfoAmp") paramManager->setXLfoAmp(value);
+                            else if (paramId == "xLfoRate") paramManager->setXLfoRate(value);
+                            else if (paramId == "yLfoAmp") paramManager->setYLfoAmp(value);
+                            else if (paramId == "yLfoRate") paramManager->setYLfoRate(value);
+                            else if (paramId == "zLfoAmp") paramManager->setZLfoAmp(value);
+                            else if (paramId == "zLfoRate") paramManager->setZLfoRate(value);
+                            else if (paramId == "rotateLfoAmp") paramManager->setRotateLfoAmp(value);
+                            else if (paramId == "rotateLfoRate") paramManager->setRotateLfoRate(value);
+                            else { ofLogWarning("ofApp::update") << "OSC: No float setter found for matched address: " << incomingAddr << " (paramId: " << paramId << ")"; }
+                            handled = true;
+                        } else if (m.getArgType(0) == OFXOSC_TYPE_INT32 || m.getArgType(0) == OFXOSC_TYPE_INT64) {
+                            int value = m.getArgAsInt(0);
+                            if (paramId == "delayAmount") paramManager->setDelayAmount(value);
+                            else { ofLogWarning("ofApp::update") << "OSC: No int setter found for matched address: " << incomingAddr << " (paramId: " << paramId << ")"; }
+                             handled = true;
+                        } else if (m.getArgType(0) == OFXOSC_TYPE_TRUE || m.getArgType(0) == OFXOSC_TYPE_FALSE) {
+                            bool value = m.getArgAsBool(0);
+                            if (paramId == "hueInvert") paramManager->setHueInverted(value);
+                            else if (paramId == "saturationInvert") paramManager->setSaturationInverted(value);
+                            else if (paramId == "brightnessInvert") paramManager->setBrightnessInverted(value);
+                            else if (paramId == "horizontalMirror") paramManager->setHorizontalMirrorEnabled(value);
+                            else if (paramId == "verticalMirror") paramManager->setVerticalMirrorEnabled(value);
+                            else if (paramId == "lumakeyInvert") paramManager->setLumakeyInverted(value);
+                            else if (paramId == "toroidEnabled") paramManager->setToroidEnabled(value);
+                            else if (paramId == "mirrorModeEnabled") paramManager->setMirrorModeEnabled(value);
+                            else if (paramId == "wetModeEnabled") paramManager->setWetModeEnabled(value);
+                            else if (paramId == "videoReactiveMode") paramManager->setVideoReactiveEnabled(value);
+                            else if (paramId == "lfoAmpMode") paramManager->setLfoAmpModeEnabled(value);
+                            else if (paramId == "lfoRateMode") paramManager->setLfoRateModeEnabled(value);
+                            else { ofLogWarning("ofApp::update") << "OSC: No bool setter found for matched address: " << incomingAddr << " (paramId: " << paramId << ")"; }
+                            handled = true;
+                        }
+                    } catch (const std::exception& e) {
+                         ofLogError("ofApp::update") << "OSC Error processing message " << incomingAddr << ": " << e.what();
+                         handled = true; 
+                    }
+                } else {
+                     ofLogWarning("ofApp::update") << "OSC: Received message with != 1 arguments for address: " << incomingAddr;
+                     handled = true; 
+                }
+                break; 
+            }
+        }
+        if (!handled) {
+             ofLogVerbose("ofApp::update") << "OSC: Received unhandled message: " << incomingAddr;
         }
     }
     
-    // Only process video at display framerate
-    if (frameCounter % 1 == 0) { // Adjust divisor for lower processing rate
-        videoManager->update();
-    }
-    
-    audioManager->update();
-    
     // Calculate frame time
     float endTime = ofGetElapsedTimef();
-    lastFrameTime = (endTime - startTime) * 1000.0f; // Convert to ms
+    lastFrameTime = (endTime - startTime) * 1000.0f; 
     
-    // Update frame time history
     frameTimeHistory.push_back(lastFrameTime);
     if (frameTimeHistory.size() > 150) {
         frameTimeHistory.pop_front();
     }
     
-    // Calculate average (last 150 frames)
     averageFrameTime = 0;
     for (float time : frameTimeHistory) {
         averageFrameTime += time;
     }
-    averageFrameTime /= frameTimeHistory.size();
+    if (!frameTimeHistory.empty()) {
+       averageFrameTime /= frameTimeHistory.size();
+    }
     
     frameCounter++;
 }
@@ -298,31 +391,20 @@ void ofApp::draw() {
     #endif
     
     if (safeDrawMode) {
-        // Safe draw path for Raspberry Pi
         try {
-            // Draw video feedback with error handling
             videoManager->draw();
         } catch (const std::exception& e) {
             ofLogError("ofApp") << "Exception in videoManager->draw(): " << e.what();
-            
-            // Draw error message to screen
-            ofBackground(0);
-            ofSetColor(255, 0, 0);
+            ofBackground(0); ofSetColor(255, 0, 0);
             ofDrawBitmapString("Render error: " + std::string(e.what()), 20, 20);
         } catch (...) {
             ofLogError("ofApp") << "Unknown exception in videoManager->draw()";
-            ofBackground(0);
-            ofSetColor(255, 0, 0);
+            ofBackground(0); ofSetColor(255, 0, 0);
             ofDrawBitmapString("Unknown render error", 20, 20);
         }
-        
-        // Always draw debug info on Raspberry Pi, no matter what
         drawDebugInfo();
     } else {
-        // Standard draw path for desktop platforms
         videoManager->draw();
-        
-        // Draw debug info if enabled
         if (debugEnabled) {
             drawDebugInfo();
         }
@@ -331,150 +413,123 @@ void ofApp::draw() {
 
 void ofApp::drawDebugInfo() {
     ofPushStyle();
-    
-    // Make sure text is visible
     ofEnableAlphaBlending();
     
-    // Always draw a minimum indication that debug mode is enabled
     ofSetColor(255, 255, 0);
     ofDrawBitmapString("DEBUG MODE", 10, 15);
     
-    // Layout settings - more compact for Raspberry Pi screens
     bool isSmallScreen = (ofGetWidth() < 800 || ofGetHeight() < 600);
-    
     int margin = isSmallScreen ? 5 : 10;
     int lineHeight = isSmallScreen ? 12 : 15;
     int columnWidth = isSmallScreen ? (ofGetWidth() / 3 - margin) : (ofGetWidth() / 3 - margin * 2);
     
-    // Add semi-transparent background behind text for better readability
     ofSetColor(0, 0, 0, 180);
-    
-    // System info background (top-left)
     int sysInfoHeight = lineHeight * 6;
     ofDrawRectangle(margin, margin, columnWidth, sysInfoHeight);
-    
-    // Performance info background (below system info)
-    int perfInfoHeight = lineHeight * 6 + 40; // height + graph
+    int perfInfoHeight = lineHeight * 6 + 40; 
     ofDrawRectangle(margin, margin + sysInfoHeight + 5, columnWidth, perfInfoHeight);
-    
-    // Parameter info background (middle column)
     ofDrawRectangle(ofGetWidth() / 3 + margin, margin, columnWidth, ofGetHeight() - margin * 2 - lineHeight * 5);
-    
-    // Audio debug info background (right column)
     ofDrawRectangle(ofGetWidth() * 2 / 3 + margin, margin, columnWidth, ofGetHeight() - margin * 2 - lineHeight * 5);
-    
-    // Video info background (bottom row)
     ofDrawRectangle(margin, ofGetHeight() - lineHeight * 6 - margin, ofGetWidth() - margin * 2, lineHeight * 6);
     
-    // Now draw all the sections with proper coloring
     drawSystemInfo(margin + 5, margin + 15, lineHeight);
     drawPerformanceInfo(margin + 5, margin + sysInfoHeight + 20, lineHeight);
     drawParameterInfo(ofGetWidth() / 3 + margin + 5, margin + 15, lineHeight);
     drawAudioDebugInfo(ofGetWidth() * 2 / 3 + margin + 5, margin + 15, lineHeight);
     drawVideoInfo(margin + 5, ofGetHeight() - lineHeight * 5 - margin, lineHeight);
     
-    // Draw help text at bottom with better visibility
     ofSetColor(0, 0, 0, 200);
     ofDrawRectangle(margin, ofGetHeight() - lineHeight * 3, ofGetWidth() - margin * 2, lineHeight * 3);
-    
     ofSetColor(180, 180, 255);
     ofDrawBitmapString("Press ` to toggle debug display", margin + 5, ofGetHeight() - lineHeight * 3 + 12);
     ofDrawBitmapString("Press A to toggle audio reactivity", margin + 5, ofGetHeight() - lineHeight * 2 + 12);
     ofDrawBitmapString("Press N to toggle audio normalization", margin + 5, ofGetHeight() - lineHeight + 12);
     
     ofPopStyle();
-    
-    // Draw camera preview in bottom-right with better error handling
-    ofPushMatrix();
-    ofPushStyle();
-    
-    int previewWidth = 200;
-    int previewHeight = 150;
-    int previewX = ofGetWidth() - previewWidth - 20;
-    int previewY = ofGetHeight() - previewHeight - 20;
-    
-    ofSetColor(0, 0, 0, 200);
-    ofDrawRectangle(previewX - 10, previewY - 25, previewWidth + 20, previewHeight + 35);
-    
-    ofSetColor(255);
-    ofDrawBitmapString("Camera Input:", previewX, previewY - 10);
-    
-    ofTranslate(previewX, previewY);
-    
-    if (videoManager) {
-        // Only attempt to display if camera initialized
-        if (videoManager->cameraInitialized && videoManager->camera.isInitialized()) {
-            ofSetColor(255);
-            videoManager->getAspectRatioFbo().draw(0, 0, previewWidth, previewHeight);
-        } else if (videoManager->getAspectRatioFbo().isAllocated()) {
-            // Draw the fallback pattern/test card
-            ofSetColor(200, 200, 200); // Dimmer to indicate it's not live
-            videoManager->getAspectRatioFbo().draw(0, 0, previewWidth, previewHeight);
-            ofSetColor(255, 0, 0);
-            ofDrawBitmapString("No camera / Fallback", 30, previewHeight/2 + 5);
-        } else {
-            ofSetColor(255, 0, 0);
-            ofDrawBitmapString("Camera FBO not allocated", 30, previewHeight/2);
-        }
-    } else {
-        ofSetColor(255, 0, 0);
-        ofDrawBitmapString("VideoManager not initialized", 10, previewHeight/2);
+
+    // --- Draw NDI Preview (in debug mode) ---
+    if (debugEnabled && currentInputSource == NDI && ndiTexture.isAllocated()) {
+        ofPushMatrix(); ofPushStyle();
+        int ndiPreviewWidth = 160; int ndiPreviewHeight = 120;
+        int ndiPreviewX = ofGetWidth() - ndiPreviewWidth - 20;
+        int ndiPreviewY = ofGetHeight() - ndiPreviewHeight - 20 - 150 - 35 - 10; 
+        ofSetColor(0, 0, 0, 200);
+        ofDrawRectangle(ndiPreviewX - 10, ndiPreviewY - 25, ndiPreviewWidth + 20, ndiPreviewHeight + 35);
+        ofSetColor(255);
+        ofDrawBitmapString("NDI Input:", ndiPreviewX, ndiPreviewY - 10);
+        ndiTexture.draw(ndiPreviewX, ndiPreviewY, ndiPreviewWidth, ndiPreviewHeight);
+        ofPopStyle(); ofPopMatrix();
     }
     
-    ofPopStyle();
-    ofPopMatrix();
+    // Draw Input Preview (Camera, NDI, or Video File)
+    ofPushMatrix(); ofPushStyle();
+    int previewWidth = 200; int previewHeight = 150;
+    int previewX = ofGetWidth() - previewWidth - 20;
+    int previewY = ofGetHeight() - previewHeight - 20;
+    ofSetColor(0, 0, 0, 200);
+    ofDrawRectangle(previewX - 10, previewY - 25, previewWidth + 20, previewHeight + 35);
+    ofSetColor(255);
+    ofDrawBitmapString("Input Preview:", previewX, previewY - 10); 
+    ofTranslate(previewX, previewY);
+    if (currentInputTexture.isAllocated()) {
+         ofSetColor(255);
+         currentInputTexture.draw(0, 0, previewWidth, previewHeight);
+         std::string sourceLabel = "Input: ";
+         if (currentInputSource == CAMERA) sourceLabel += "Camera";
+         else if (currentInputSource == NDI) sourceLabel += "NDI";
+         else if (currentInputSource == VIDEO_FILE) sourceLabel += "File";
+         ofDrawBitmapStringHighlight(sourceLabel, 5, 15, ofColor(0,0,0,150), ofColor(255,255,0));
+    } else {
+         ofSetColor(255, 0, 0);
+         ofDrawBitmapString("Input Texture Not Allocated", 10, previewHeight/2);
+    }
+    ofPopStyle(); ofPopMatrix();
 }
 
 //--------------------------------------------------------------
 void ofApp::exit() {
     // Clean shutdown of audio
     audioManager->exit();
+
+    // Release NDI resources
+    ndiReceiver.ReleaseReceiver(); 
+    // No need to release finder if we didn't explicitly create it persistently
     
-    // Create a new XML document
+    // Save settings before exiting
     ofxXmlSettings xml;
-    
-    // Check if we can load the existing file to preserve settings
-    bool existingFile = xml.loadFile(ofToDataPath("settings.xml"));
-    
-    // Update app settings (preserving existing values if file loaded)
-    if (!xml.tagExists("app")) {
-        xml.addTag("app");
+    if (xml.loadFile(ofToDataPath("settings.xml"))) {
+         // Preserve existing non-app settings if possible
+    } else {
+        xml.addTag("app"); // Ensure app tag exists if file was missing
     }
+
     xml.pushTag("app");
-    
-    // Only update these values if they don't exist or if file didn't load
-    if (!existingFile || !xml.tagExists("version")) {
-        xml.setValue("version", "1.0.0");
-    }
-    
-    // Always update lastSaved timestamp
+    xml.setValue("version", "1.0.0"); // Update version or keep existing
     xml.setValue("lastSaved", ofGetTimestampString());
-    
-    // Update current runtime values
     xml.setValue("debugEnabled", debugEnabled ? 1 : 0);
-    xml.setValue("width", ofGetWidth());      // Save current window dimensions
+    xml.setValue("width", ofGetWidth());      
     xml.setValue("height", ofGetHeight());
     xml.setValue("frameRate", (int)ofGetTargetFrameRate());
     
+    // Save current input source
+    std::string sourceStr = "CAMERA";
+    if (currentInputSource == NDI) sourceStr = "NDI";
+    else if (currentInputSource == VIDEO_FILE) sourceStr = "VIDEO_FILE";
+    xml.setValue("videoInputSource", sourceStr);
+    xml.setValue("videoFilePath", videoFilePath); 
+    xml.setValue("ndiSourceIndex", currentNdiSourceIndex); // Save NDI source index
+
     xml.popTag(); // pop app
     
-    // Ensure paramManager tag exists
-    if (!xml.tagExists("paramManager")) {
-        xml.addTag("paramManager");
-    }
-    
-    // Let each manager save its settings
-    paramManager->saveToXml(xml);
-    
-    // Other managers should now save inside the paramManager tag
-    if (xml.pushTag("paramManager")) {
+    // Save manager settings
+    paramManager->saveToXml(xml); 
+    if (xml.pushTag("paramManager")) { // Push into the tag created/found by paramManager
         audioManager->saveToXml(xml);
         videoManager->saveToXml(xml);
         midiManager->saveSettings(xml);
-        xml.popTag(); // pop paramManager
+        xml.popTag(); 
     }
     
-    // Save entire file with error handling
     try {
         bool saved = xml.saveFile(ofToDataPath("settings.xml"));
         ofLogNotice("ofApp") << "Settings saved " << (saved ? "successfully" : "unsuccessfully") << " to settings.xml";
@@ -489,28 +544,102 @@ void ofApp::keyPressed(int key) {
     bool shiftPressed = ofGetKeyPressed(OF_KEY_SHIFT);
     
     // Process key controls
+    // Use videoManager methods for device control
+    int currentDeviceIndex = videoManager->getCurrentVideoDeviceIndex();
+    auto deviceList = videoManager->getVideoDeviceList(); // Get names
+    int newDeviceIndex = -1; // Declare outside
+
     switch (key) {
         // Debug toggle
         case '`':
             debugEnabled = !debugEnabled;
             break;
             
-        // Video device controls
-        case '<':
-            if (shiftPressed) {
-                int current = videoManager->getCurrentVideoDeviceIndex();
-                if (current > 0) {
-                    videoManager->selectVideoDevice(current - 1);
-                }
+         // Video device controls (using videoManager now) / NDI Source Switching
+         case '<': // ASCII value 60
+              if (currentInputSource == NDI && !shiftPressed) {
+                  // NDI Source Switching (Previous)
+                  int nSources = ndiReceiver.GetSenderCount(); 
+                  if (nSources > 0) {
+                      int newNdiIndex = (currentNdiSourceIndex - 1 + nSources) % nSources; 
+                      ofLogNotice("ofApp::keyPressed") << "Attempting to switch NDI source from " << currentNdiSourceIndex << " to " << newNdiIndex;
+                      ndiReceiver.ReleaseReceiver(); // Release current connection
+                      // Attempt to create receiver for the new index
+                      if (ndiReceiver.CreateReceiver(newNdiIndex)) { 
+                          currentNdiSourceIndex = newNdiIndex; // Update index if successful
+                          ofLogNotice("ofApp::keyPressed") << "Successfully switched NDI source to index: " << currentNdiSourceIndex << " (" << ndiReceiver.GetSenderName() << ")";
+                      } else {
+                          ofLogError("ofApp::keyPressed") << "Failed to create NDI receiver for source index: " << newNdiIndex;
+                          // Optional: Attempt to reconnect to the previous source?
+                          // if(!ndiReceiver.CreateReceiver(currentNdiSourceIndex)) {
+                          //     ofLogError("ofApp::keyPressed") << "Failed to reconnect to original NDI source index: " << currentNdiSourceIndex;
+                          // }
+                      }
+                  }
+              } else if (currentInputSource == CAMERA && shiftPressed) {
+                  // Camera Device Switching (Previous)
+                  if (currentDeviceIndex > 0) { // Ensure we don't go below index 0
+                      newDeviceIndex = currentDeviceIndex - 1;
+                      if (videoManager->selectVideoDevice(newDeviceIndex)) {
+                         ofLogNotice("ofApp::keyPressed") << "Switched camera to device index: " << newDeviceIndex;
+                     } else {
+                         ofLogError("ofApp::keyPressed") << "Failed to switch camera to device index: " << newDeviceIndex;
+                     }
+                 }
+            }
+             break;
+             
+         case '>': // ASCII value 62
+              if (currentInputSource == NDI && !shiftPressed) {
+                  // NDI Source Switching (Next)
+                   int nSources = ndiReceiver.GetSenderCount(); 
+                  if (nSources > 0) {
+                      int newNdiIndex = (currentNdiSourceIndex + 1) % nSources; 
+                      ofLogNotice("ofApp::keyPressed") << "Attempting to switch NDI source from " << currentNdiSourceIndex << " to " << newNdiIndex;
+                      ndiReceiver.ReleaseReceiver(); // Release current connection
+                      // Attempt to create receiver for the new index
+                      if (ndiReceiver.CreateReceiver(newNdiIndex)) {
+                          currentNdiSourceIndex = newNdiIndex; // Update index if successful
+                          ofLogNotice("ofApp::keyPressed") << "Successfully switched NDI source to index: " << currentNdiSourceIndex << " (" << ndiReceiver.GetSenderName() << ")";
+                      } else {
+                          ofLogError("ofApp::keyPressed") << "Failed to create NDI receiver for source index: " << newNdiIndex;
+                          // Optional: Attempt to reconnect to the previous source?
+                          // if(!ndiReceiver.CreateReceiver(currentNdiSourceIndex)) {
+                          //     ofLogError("ofApp::keyPressed") << "Failed to reconnect to original NDI source index: " << currentNdiSourceIndex;
+                          // }
+                      }
+                  }
+              } else if (currentInputSource == CAMERA && shiftPressed) {
+                  // Camera Device Switching (Next)
+                  if (currentDeviceIndex != -1 && currentDeviceIndex < deviceList.size() - 1) { // Ensure we don't go past the end
+                      newDeviceIndex = currentDeviceIndex + 1;
+                      if (videoManager->selectVideoDevice(newDeviceIndex)) {
+                         ofLogNotice("ofApp::keyPressed") << "Switched camera to device index: " << newDeviceIndex;
+                     } else {
+                         ofLogError("ofApp::keyPressed") << "Failed to switch camera to device index: " << newDeviceIndex;
+                     }
+                 }
             }
             break;
-            
-        case '>':
-            if (shiftPressed) {
-                int current = videoManager->getCurrentVideoDeviceIndex();
-                videoManager->selectVideoDevice(current + 1);
-            }
-            break;
+
+        // Input Source Cycling (Example: using 'I' key)
+        // case 'i': // Keep lowercase 'i' separate from parameter control - This conflicts with LFO control
+        case 'I': // Use uppercase 'I' only
+             if (currentInputSource == CAMERA) {
+                 currentInputSource = NDI;
+                 if (videoPlayer.isPlaying()) videoPlayer.stop();
+                 ofLogNotice("ofApp") << "Switched input source to NDI";
+             } else if (currentInputSource == NDI) {
+                 currentInputSource = VIDEO_FILE;
+                 videoPlayer.play(); // Start video when switching to it
+                 ofLogNotice("ofApp") << "Switched input source to VIDEO_FILE";
+             } else { // VIDEO_FILE
+                 currentInputSource = CAMERA;
+                 if (videoPlayer.isPlaying()) videoPlayer.stop();
+                 ofLogNotice("ofApp") << "Switched input source to CAMERA";
+             }
+             break;
+
             
         // Audio enabling/disabling (capital A)
         case 'A':
@@ -536,18 +665,8 @@ void ofApp::keyPressed(int key) {
             }
             break;
 
-//        // Previous audio device - use '<' instead of '['
-//        case '<':
-//            if (shiftPressed) {
-//                int current = audioManager->getCurrentDeviceIndex();
-//                if (current > 0) {
-//                    audioManager->selectAudioDevice(current - 1);
-//                }
-//            }
-//            break;
-
-        // Next audio device
-        case 'D':
+        // Next audio device (Keep 'D' for audio, avoid conflict with '<'/'<')
+        case 'D': 
             if (shiftPressed) {
                 int current = audioManager->getCurrentDeviceIndex();
                 audioManager->selectAudioDevice(current + 1);
@@ -604,14 +723,14 @@ void ofApp::keyPressed(int key) {
             paramManager->setMix(paramManager->getMix() - 0.01f);
             break;
             
-        case 'k':
+        case 'k': 
             paramManager->setLumakeyValue(ofClamp(paramManager->getLumakeyValue() + 0.01f, 0.0f, 1.0f));
             break;
-        case ',':
+        case ',': 
             paramManager->setLumakeyValue(ofClamp(paramManager->getLumakeyValue() - 0.01f, 0.0f, 1.0f));
             break;
             
-        case 'l':
+        case 'l': 
             paramManager->setSharpenAmount(paramManager->getSharpenAmount() + 0.01f);
             break;
         case '.':
@@ -821,10 +940,12 @@ void ofApp::drawPerformanceInfo(int x, int y, int lineHeight) {
     
     // Calculate average FPS
     float avgFps = 0;
-    for (int i = 0; i < 60; i++) {
-        avgFps += frameRateHistory[i];
+    if (!frameTimeHistory.empty()) { // Avoid division by zero
+        for (float time : frameTimeHistory) {
+            avgFps += (1000.0f / time); // Calculate FPS from frame time
+        }
+         avgFps /= frameTimeHistory.size();
     }
-    avgFps /= 60.0f;
     
     string avgFpsStr = "Avg FPS: " + ofToString(avgFps, 1);
     ofDrawBitmapString(avgFpsStr, x, y);
@@ -838,14 +959,18 @@ void ofApp::drawPerformanceInfo(int x, int y, int lineHeight) {
     ofDrawRectangle(x, y, graphWidth, graphHeight);
     
     ofSetColor(0, 255, 0);
-    for (int i = 0; i < 60; i++) {
-        float barHeight = ofMap(frameRateHistory[i], 0, 60, 0, graphHeight);
-        ofDrawLine(x + i * 2, y + graphHeight, x + i * 2, y + graphHeight - barHeight);
+    int historySize = frameTimeHistory.size();
+    for (int i = 0; i < historySize; i++) {
+        float frameTime = frameTimeHistory[i];
+        float currentFps = (frameTime > 0) ? (1000.0f / frameTime) : 0; // Avoid division by zero
+        float barHeight = ofMap(currentFps, 0, 60, 0, graphHeight, true); // Clamp values
+        ofDrawLine(x + i * (graphWidth / (float)historySize), y + graphHeight, 
+                   x + i * (graphWidth / (float)historySize), y + graphHeight - barHeight);
     }
     
     // Draw target FPS line (30 FPS)
     ofSetColor(255, 255, 0, 100);
-    float y30fps = y + graphHeight - ofMap(30.0f, 0, 60.0f, 0, graphHeight);
+    float y30fps = y + graphHeight - ofMap(30.0f, 0, 60.0f, 0, graphHeight, true);
     ofDrawLine(x, y30fps, x + graphWidth, y30fps);
 }
 
@@ -854,10 +979,41 @@ void ofApp::drawVideoInfo(int x, int y, int lineHeight) {
     
     ofDrawBitmapString("VIDEO INFO", x, y);
     y += lineHeight;
-    
-    ofDrawBitmapString("Device: " + videoManager->getCurrentVideoDeviceName(), x, y);
+
+    // Display current input source
+    std::string sourceStr = "UNKNOWN";
+    if(currentInputSource == CAMERA) sourceStr = "CAMERA";
+    else if(currentInputSource == NDI) sourceStr = "NDI";
+    else if(currentInputSource == VIDEO_FILE) sourceStr = "VIDEO_FILE";
+    ofDrawBitmapString("Input Source: " + sourceStr + " (Press 'I' to cycle)", x, y);
     y += lineHeight;
-    
+
+    // Display Camera device info if Camera is the source
+    if (currentInputSource == CAMERA) {
+        std::string deviceName = videoManager->getCurrentVideoDeviceName(); // Use videoManager method
+        if (!videoManager->isCameraInitialized()) { // Use videoManager method
+            deviceName += " (Error)";
+        }
+        ofDrawBitmapString("Camera Device: " + deviceName + " (Shift+ </> to change)", x, y);
+         y += lineHeight;
+     } else if (currentInputSource == NDI) {
+          std::string ndiStatus = "NDI Source [" + ofToString(currentNdiSourceIndex) + "]: ";
+          if (ndiReceiver.ReceiverConnected()) {
+              ndiStatus += ndiReceiver.GetSenderName();
+          } else {
+              ndiStatus += "Connecting...";
+          }
+          ndiStatus += " (< / > to change)";
+          ofDrawBitmapString(ndiStatus, x, y);
+          y += lineHeight;
+     } else if (currentInputSource == VIDEO_FILE) {
+         ofDrawBitmapString("Video File: " + videoFilePath, x, y);
+         y += lineHeight;
+         ofDrawBitmapString("Video Pos: " + ofToString(videoPlayer.getPosition() * 100.0f, 1) + "%", x, y);
+         y += lineHeight;
+    }
+
+    // Display info managed by VideoFeedbackManager
     ofDrawBitmapString("Feedback buffer: " + ofToString(videoManager->getFrameBufferLength()) + " frames", x, y);
     y += lineHeight;
     
@@ -1012,18 +1168,6 @@ void ofApp::drawParameterInfo(int x, int y, int lineHeight) {
     // Toggles
     y += lineHeight;
     ofDrawBitmapString("--- Toggles ---", x, y);
-    y += lineHeight;
-    
-    ofDrawBitmapString("Hue Invert: " + ofToString(paramManager->isHueInverted()), x, y);
-    y += lineHeight;
-    
-    ofDrawBitmapString("Sat Invert: " + ofToString(paramManager->isSaturationInverted()), x, y);
-    y += lineHeight;
-    
-    ofDrawBitmapString("Bright Invert: " + ofToString(paramManager->isBrightnessInverted()), x, y);
-    y += lineHeight;
-    
-    ofDrawBitmapString("Horiz Mirror: " + ofToString(paramManager->isHorizontalMirrorEnabled()), x, y);
     y += lineHeight;
     
     ofDrawBitmapString("Vert Mirror: " + ofToString(paramManager->isVerticalMirrorEnabled()), x, y);

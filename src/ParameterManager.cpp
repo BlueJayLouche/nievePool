@@ -16,10 +16,50 @@ ParameterManager::ParameterManager() {
     }
 }
 
+// Helper function to initialize parameter maps
+void ParameterManager::initializeParameterMaps() {
+    parameterIds = {
+        // Toggles
+        "hueInvert", "saturationInvert", "brightnessInvert", "horizontalMirror", 
+        "verticalMirror", "lumakeyInvert", "toroidEnabled", "mirrorModeEnabled", 
+        "wetModeEnabled",
+        // Effect Parameters (Float)
+        "lumakeyValue", "mix", "hue", "saturation", "brightness", 
+        "temporalFilterMix", "temporalFilterResonance", "sharpenAmount", 
+        "xDisplace", "yDisplace", "zDisplace", "rotate", "hueModulation", 
+        "hueOffset", "hueLFO", "zFrequency", "xFrequency", "yFrequency",
+        // Effect Parameters (Int)
+        "delayAmount",
+        // LFO Parameters
+        "xLfoAmp", "xLfoRate", "yLfoAmp", "yLfoRate", "zLfoAmp", "zLfoRate",
+        "rotateLfoAmp", "rotateLfoRate",
+        // Video Reactivity Parameters (assuming they might be controllable too)
+        "vLumakeyValue", "vMix", "vHue", "vSaturation", "vBrightness",
+        "vTemporalFilterMix", "vTemporalFilterResonance", "vSharpenAmount",
+        "vXDisplace", "vYDisplace", "vZDisplace", "vRotate", "vHueModulation",
+        "vHueOffset", "vHueLFO",
+        // Mode Flags (Toggles)
+        "videoReactiveMode", "lfoAmpMode", "lfoRateMode"
+        // Note: Video device settings are not included as controllable parameters here
+    };
+
+    // Initialize maps with defaults
+    for (const auto& id : parameterIds) {
+        midiChannels[id] = -1;
+        midiControls[id] = -1;
+        oscAddresses[id] = "";
+    }
+    // Reset OSC port to default
+    oscPort = 9000;
+}
+
+
 void ParameterManager::setup() {
-    // Try to load settings from XML, fall back to defaults if not found
+    initializeParameterMaps(); // Initialize IDs and default mappings first
+    // Try to load settings from XML, this will overwrite defaults if mappings exist
     if (!loadSettings()) {
-        resetToDefaults();
+        // If loading fails (e.g., file not found), reset ensures defaults are set
+        resetToDefaults(); 
     }
 }
 
@@ -148,8 +188,16 @@ void ParameterManager::resetToDefaults() {
     videoReactiveMode = false;
     lfoAmpMode = false;
     lfoRateMode = false;
-    
     clearAllLocks();
+
+    // Reset mappings to defaults
+    for (const auto& id : parameterIds) {
+        midiChannels[id] = -1;
+        midiControls[id] = -1;
+        oscAddresses[id] = "";
+    }
+    // Reset OSC port to default
+    oscPort = 9000;
 }
 
 void ParameterManager::recordParameter(int paramIndex, float value) {
@@ -174,45 +222,9 @@ void ParameterManager::loadFromXml(ofxXmlSettings& xml) {
     
     // Push into the paramManager tag
     xml.pushTag("paramManager");
-    
-    // Load toggle states
-    hueInvert = xml.getValue("toggles:hueInvert", hueInvert);
-    saturationInvert = xml.getValue("toggles:saturationInvert", saturationInvert);
-    brightnessInvert = xml.getValue("toggles:brightnessInvert", brightnessInvert);
-    horizontalMirror = xml.getValue("toggles:horizontalMirror", horizontalMirror);
-    verticalMirror = xml.getValue("toggles:verticalMirror", verticalMirror);
-    lumakeyInvert = xml.getValue("toggles:lumakeyInvert", lumakeyInvert);
-    toroidEnabled = xml.getValue("toggles:toroidEnabled", toroidEnabled);
-    mirrorModeEnabled = xml.getValue("toggles:mirrorModeEnabled", mirrorModeEnabled);
-    wetModeEnabled = xml.getValue("toggles:wetModeEnabled", wetModeEnabled);
-    
-    // Load effect parameters
-    lumakeyValue = xml.getValue("parameters:lumakeyValue", lumakeyValue);
-    mix = xml.getValue("parameters:mix", mix);
-    hue = xml.getValue("parameters:hue", hue);
-    saturation = xml.getValue("parameters:saturation", saturation);
-    brightness = xml.getValue("parameters:brightness", brightness);
-    temporalFilterMix = xml.getValue("parameters:temporalFilterMix", temporalFilterMix);
-    temporalFilterResonance = xml.getValue("parameters:temporalFilterResonance", temporalFilterResonance);
-    sharpenAmount = xml.getValue("parameters:sharpenAmount", sharpenAmount);
-    xDisplace = xml.getValue("parameters:xDisplace", xDisplace);
-    yDisplace = xml.getValue("parameters:yDisplace", yDisplace);
-    zDisplace = xml.getValue("parameters:zDisplace", zDisplace);
-    rotate = xml.getValue("parameters:rotate", rotate);
-    hueModulation = xml.getValue("parameters:hueModulation", hueModulation);
-    hueOffset = xml.getValue("parameters:hueOffset", hueOffset);
-    hueLFO = xml.getValue("parameters:hueLFO", hueLFO);
-    delayAmount = xml.getValue("parameters:delayAmount", delayAmount);
-    
-    // Load LFO parameters
-    xLfoAmp = xml.getValue("lfo:xLfoAmp", xLfoAmp);
-    xLfoRate = xml.getValue("lfo:xLfoRate", xLfoRate);
-    yLfoAmp = xml.getValue("lfo:yLfoAmp", yLfoAmp);
-    yLfoRate = xml.getValue("lfo:yLfoRate", yLfoRate);
-    zLfoAmp = xml.getValue("lfo:zLfoAmp", zLfoAmp);
-    zLfoRate = xml.getValue("lfo:zLfoRate", zLfoRate);
-    rotateLfoAmp = xml.getValue("lfo:rotateLfoAmp", rotateLfoAmp);
-    rotateLfoRate = xml.getValue("lfo:rotateLfoRate", rotateLfoRate);
+
+    // Load OSC Port 
+    oscPort = xml.getValue("osc:port", oscPort); // Load OSC port, keep default if not found
     
     // Load video settings
     videoDevicePath = xml.getValue("video:devicePath", videoDevicePath);
@@ -222,152 +234,244 @@ void ParameterManager::loadFromXml(ofxXmlSettings& xml) {
     videoHeight = xml.getValue("video:height", videoHeight);
     videoFrameRate = xml.getValue("video:frameRate", videoFrameRate);
     
-    // Load video reactivity parameters
-    vLumakeyValue = xml.getValue("videoReactive:vLumakeyValue", vLumakeyValue);
-    vMix = xml.getValue("videoReactive:vMix", vMix);
-    vHue = xml.getValue("videoReactive:vHue", vHue);
-    vSaturation = xml.getValue("videoReactive:vSaturation", vSaturation);
-    vBrightness = xml.getValue("videoReactive:vBrightness", vBrightness);
-    vTemporalFilterMix = xml.getValue("videoReactive:vTemporalFilterMix", vTemporalFilterMix);
-    vTemporalFilterResonance = xml.getValue("videoReactive:vTemporalFilterResonance", vTemporalFilterResonance);
-    vSharpenAmount = xml.getValue("videoReactive:vSharpenAmount", vSharpenAmount);
-    vXDisplace = xml.getValue("videoReactive:vXDisplace", vXDisplace);
-    vYDisplace = xml.getValue("videoReactive:vYDisplace", vYDisplace);
-    vZDisplace = xml.getValue("videoReactive:vZDisplace", vZDisplace);
-    vRotate = xml.getValue("videoReactive:vRotate", vRotate);
-    vHueModulation = xml.getValue("videoReactive:vHueModulation", vHueModulation);
-    vHueOffset = xml.getValue("videoReactive:vHueOffset", vHueOffset);
-    vHueLFO = xml.getValue("videoReactive:vHueLFO", vHueLFO);
-    
-    // Load mode flags
-    videoReactiveMode = xml.getValue("modes:videoReactiveMode", videoReactiveMode);
-    lfoAmpMode = xml.getValue("modes:lfoAmpMode", lfoAmpMode);
-    lfoRateMode = xml.getValue("modes:lfoRateMode", lfoRateMode);
-    
     // Load P-Lock data if available
     if (xml.tagExists("plocks")) {
         xml.pushTag("plocks");
-        
-        // Load smooth factor
         pLockSmoothFactor = xml.getValue("smoothFactor", pLockSmoothFactor);
-        
         if (xml.tagExists("locks")) {
             xml.pushTag("locks");
-            
             for (int i = 0; i < P_LOCK_NUMBER; i++) {
                 std::string lockTag = "lock" + ofToString(i);
-                
                 if (xml.tagExists(lockTag)) {
                     xml.pushTag(lockTag);
-                    
                     std::string valuesStr = xml.getValue("values", "");
                     if (!valuesStr.empty()) {
                         std::vector<std::string> values = ofSplitString(valuesStr, ",");
-                        
                         for (int j = 0; j < std::min((int)values.size(), P_LOCK_SIZE); j++) {
                             pLockValues[i][j] = ofToFloat(values[j]);
                         }
                     }
-                    
                     xml.popTag(); // pop lockTag
                 }
             }
-            
             xml.popTag(); // pop locks
         }
-        
         xml.popTag(); // pop plocks
     }
     
-    // Pop the paramManager tag
-    xml.popTag();
+    // --- Load Parameters and Mappings ---
+    int numParamTags = xml.getNumTags("param");
+    ofLogNotice("ParameterManager::loadFromXml") << "Loading " << numParamTags << " parameters from XML.";
+    for (int i = 0; i < numParamTags; ++i) {
+        // Get attributes using the correct tag name ("param") and index (i)
+        std::string id = xml.getAttribute("param", "id", std::string("unknown"), i);
+        std::string valueStr = xml.getAttribute("param", "value", std::string(""), i);
+        
+        // Load mappings first (providing defaults with correct types if attributes are missing)
+        // Ensure the ID is valid before trying to insert into maps
+        if (id != "unknown" && std::find(parameterIds.begin(), parameterIds.end(), id) != parameterIds.end()) {
+            midiChannels[id] = xml.getAttribute("param", "midiChannel", -1, i);
+            midiControls[id] = xml.getAttribute("param", "midiControl", -1, i);
+            oscAddresses[id] = xml.getAttribute("param", "oscAddr", std::string(""), i);
+        } else if (id != "unknown") {
+             ofLogWarning("ParameterManager::loadFromXml") << "Skipping unknown parameter ID found in XML: " << id;
+             continue; // Skip to next param tag if ID is not recognized
+        } else {
+             ofLogWarning("ParameterManager::loadFromXml") << "Found param tag with missing ID attribute at index " << i;
+             continue; // Skip if ID is missing
+        }
+
+
+        // Load value using appropriate setter based on ID
+        // This requires knowing the type associated with each ID
+        if (!valueStr.empty()) {
+            try {
+                // Floats
+                if (id == "lumakeyValue") setLumakeyValue(ofToFloat(valueStr), false); // Don't record during load
+                else if (id == "mix") setMix(ofToFloat(valueStr), false);
+                else if (id == "hue") setHue(ofToFloat(valueStr), false);
+                else if (id == "saturation") setSaturation(ofToFloat(valueStr), false);
+                else if (id == "brightness") setBrightness(ofToFloat(valueStr), false);
+                else if (id == "temporalFilterMix") setTemporalFilterMix(ofToFloat(valueStr), false);
+                else if (id == "temporalFilterResonance") setTemporalFilterResonance(ofToFloat(valueStr), false);
+                else if (id == "sharpenAmount") setSharpenAmount(ofToFloat(valueStr), false);
+                else if (id == "xDisplace") setXDisplace(ofToFloat(valueStr), false);
+                else if (id == "yDisplace") setYDisplace(ofToFloat(valueStr), false);
+                else if (id == "zDisplace") setZDisplace(ofToFloat(valueStr), false);
+                else if (id == "rotate") setRotate(ofToFloat(valueStr), false);
+                else if (id == "hueModulation") setHueModulation(ofToFloat(valueStr), false);
+                else if (id == "hueOffset") setHueOffset(ofToFloat(valueStr), false);
+                else if (id == "hueLFO") setHueLFO(ofToFloat(valueStr), false);
+                else if (id == "zFrequency") setZFrequency(ofToFloat(valueStr), false);
+                else if (id == "xFrequency") setXFrequency(ofToFloat(valueStr), false);
+                else if (id == "yFrequency") setYFrequency(ofToFloat(valueStr), false);
+                // LFOs
+                else if (id == "xLfoAmp") setXLfoAmp(ofToFloat(valueStr));
+                else if (id == "xLfoRate") setXLfoRate(ofToFloat(valueStr));
+                else if (id == "yLfoAmp") setYLfoAmp(ofToFloat(valueStr));
+                else if (id == "yLfoRate") setYLfoRate(ofToFloat(valueStr));
+                else if (id == "zLfoAmp") setZLfoAmp(ofToFloat(valueStr));
+                else if (id == "zLfoRate") setZLfoRate(ofToFloat(valueStr));
+                else if (id == "rotateLfoAmp") setRotateLfoAmp(ofToFloat(valueStr));
+                else if (id == "rotateLfoRate") setRotateLfoRate(ofToFloat(valueStr));
+                // Video Reactive
+                else if (id == "vLumakeyValue") setVLumakeyValue(ofToFloat(valueStr));
+                else if (id == "vMix") setVMix(ofToFloat(valueStr));
+                else if (id == "vHue") setVHue(ofToFloat(valueStr));
+                else if (id == "vSaturation") setVSaturation(ofToFloat(valueStr));
+                else if (id == "vBrightness") setVBrightness(ofToFloat(valueStr));
+                else if (id == "vTemporalFilterMix") setVTemporalFilterMix(ofToFloat(valueStr));
+                else if (id == "vTemporalFilterResonance") setVTemporalFilterResonance(ofToFloat(valueStr));
+                else if (id == "vSharpenAmount") setVSharpenAmount(ofToFloat(valueStr));
+                else if (id == "vXDisplace") setVXDisplace(ofToFloat(valueStr));
+                else if (id == "vYDisplace") setVYDisplace(ofToFloat(valueStr));
+                else if (id == "vZDisplace") setVZDisplace(ofToFloat(valueStr));
+                else if (id == "vRotate") setVRotate(ofToFloat(valueStr));
+                else if (id == "vHueModulation") setVHueModulation(ofToFloat(valueStr));
+                else if (id == "vHueOffset") setVHueOffset(ofToFloat(valueStr));
+                else if (id == "vHueLFO") setVHueLFO(ofToFloat(valueStr));
+                // Ints
+                else if (id == "delayAmount") setDelayAmount(ofToInt(valueStr), false);
+                // Bools (Toggles & Modes)
+                else if (id == "hueInvert") setHueInverted(ofToBool(valueStr));
+                else if (id == "saturationInvert") setSaturationInverted(ofToBool(valueStr));
+                else if (id == "brightnessInvert") setBrightnessInverted(ofToBool(valueStr));
+                else if (id == "horizontalMirror") setHorizontalMirrorEnabled(ofToBool(valueStr));
+                else if (id == "verticalMirror") setVerticalMirrorEnabled(ofToBool(valueStr));
+                else if (id == "lumakeyInvert") setLumakeyInverted(ofToBool(valueStr));
+                else if (id == "toroidEnabled") setToroidEnabled(ofToBool(valueStr));
+                else if (id == "mirrorModeEnabled") setMirrorModeEnabled(ofToBool(valueStr));
+                else if (id == "wetModeEnabled") setWetModeEnabled(ofToBool(valueStr));
+                else if (id == "videoReactiveMode") setVideoReactiveEnabled(ofToBool(valueStr));
+                else if (id == "lfoAmpMode") setLfoAmpModeEnabled(ofToBool(valueStr));
+                else if (id == "lfoRateMode") setLfoRateModeEnabled(ofToBool(valueStr));
+                else {
+                    ofLogWarning("ParameterManager::loadFromXml") << "Unknown parameter ID during load: " << id;
+                }
+            } catch (const std::invalid_argument& e) {
+                 ofLogError("ParameterManager::loadFromXml") << "Conversion error for param '" << id << "' value '" << valueStr << "': " << e.what();
+            } catch (const std::out_of_range& e) {
+                 ofLogError("ParameterManager::loadFromXml") << "Out of range error for param '" << id << "' value '" << valueStr << "': " << e.what();
+            }
+        } else {
+             ofLogWarning("ParameterManager::loadFromXml") << "Empty value attribute for param ID: " << id;
+        }
+        // Note: No popTag needed here as getAttribute doesn't change the current tag level
+    }
+    
+    xml.popTag(); // pop paramManager
 }
 
+
 void ParameterManager::saveToXml(ofxXmlSettings& xml) const {
-    // Add param manager section
+    // Ensure paramManager tag exists
     if (!xml.tagExists("paramManager")) {
         xml.addTag("paramManager");
     }
     xml.pushTag("paramManager");
-    
-    // Save toggle states
-    xml.setValue("toggles:hueInvert", hueInvert);
-    xml.setValue("toggles:saturationInvert", saturationInvert);
-    xml.setValue("toggles:brightnessInvert", brightnessInvert);
-    xml.setValue("toggles:horizontalMirror", horizontalMirror);
-    xml.setValue("toggles:verticalMirror", verticalMirror);
-    xml.setValue("toggles:lumakeyInvert", lumakeyInvert);
-    xml.setValue("toggles:toroidEnabled", toroidEnabled);
-    xml.setValue("toggles:mirrorModeEnabled", mirrorModeEnabled);
-    xml.setValue("toggles:wetModeEnabled", wetModeEnabled);
-    
-    // Save effect parameters
-    xml.setValue("parameters:lumakeyValue", lumakeyValue);
-    xml.setValue("parameters:mix", mix);
-    xml.setValue("parameters:hue", hue);
-    xml.setValue("parameters:saturation", saturation);
-    xml.setValue("parameters:brightness", brightness);
-    xml.setValue("parameters:temporalFilterMix", temporalFilterMix);
-    xml.setValue("parameters:temporalFilterResonance", temporalFilterResonance);
-    xml.setValue("parameters:sharpenAmount", sharpenAmount);
-    xml.setValue("parameters:xDisplace", xDisplace);
-    xml.setValue("parameters:yDisplace", yDisplace);
-    xml.setValue("parameters:zDisplace", zDisplace);
-    xml.setValue("parameters:rotate", rotate);
-    xml.setValue("parameters:hueModulation", hueModulation);
-    xml.setValue("parameters:hueOffset", hueOffset);
-    xml.setValue("parameters:hueLFO", hueLFO);
-    xml.setValue("parameters:delayAmount", delayAmount);
-    
-    // Save LFO parameters
-    xml.setValue("lfo:xLfoAmp", xLfoAmp);
-    xml.setValue("lfo:xLfoRate", xLfoRate);
-    xml.setValue("lfo:yLfoAmp", yLfoAmp);
-    xml.setValue("lfo:yLfoRate", yLfoRate);
-    xml.setValue("lfo:zLfoAmp", zLfoAmp);
-    xml.setValue("lfo:zLfoRate", zLfoRate);
-    xml.setValue("lfo:rotateLfoAmp", rotateLfoAmp);
-    xml.setValue("lfo:rotateLfoRate", rotateLfoRate);
-    
-    // Save video settings
+
+    // Save OSC Port
+    xml.setValue("osc:port", oscPort);
+
+    // Save video settings 
     xml.setValue("video:devicePath", videoDevicePath);
     xml.setValue("video:deviceID", videoDeviceID);
     xml.setValue("video:format", videoFormat);
     xml.setValue("video:width", videoWidth);
     xml.setValue("video:height", videoHeight);
     xml.setValue("video:frameRate", videoFrameRate);
-    
-    // Save video reactivity parameters
-    xml.setValue("videoReactive:vLumakeyValue", vLumakeyValue);
-    xml.setValue("videoReactive:vMix", vMix);
-    xml.setValue("videoReactive:vHue", vHue);
-    xml.setValue("videoReactive:vSaturation", vSaturation);
-    xml.setValue("videoReactive:vBrightness", vBrightness);
-    xml.setValue("videoReactive:vTemporalFilterMix", vTemporalFilterMix);
-    xml.setValue("videoReactive:vTemporalFilterResonance", vTemporalFilterResonance);
-    xml.setValue("videoReactive:vSharpenAmount", vSharpenAmount);
-    xml.setValue("videoReactive:vXDisplace", vXDisplace);
-    xml.setValue("videoReactive:vYDisplace", vYDisplace);
-    xml.setValue("videoReactive:vZDisplace", vZDisplace);
-    xml.setValue("videoReactive:vRotate", vRotate);
-    xml.setValue("videoReactive:vHueModulation", vHueModulation);
-    xml.setValue("videoReactive:vHueOffset", vHueOffset);
-    xml.setValue("videoReactive:vHueLFO", vHueLFO);
-    
-    // Save mode flags
-    xml.setValue("modes:videoReactiveMode", videoReactiveMode);
-    xml.setValue("modes:lfoAmpMode", lfoAmpMode);
-    xml.setValue("modes:lfoRateMode", lfoRateMode);
-    
-    // Save P-Lock data
-    xml.setValue("plocks:smoothFactor", pLockSmoothFactor);
-    
-    if (xml.tagExists("plocks")) {
-        xml.removeTag("plocks");
+
+    // Remove old <param> tags before saving new ones
+    while(xml.getNumTags("param") > 0) {
+        xml.removeTag("param", 0);
     }
+
+    // Iterate through known parameter IDs and save each one
+    for (const auto& id : parameterIds) {
+        int tagIndex = xml.addTag("param"); // Add tag and get its index
+
+        // Add attributes to the newly created tag using its index
+        xml.addAttribute("param", "id", id, tagIndex);
+
+        // Save value based on type using getters
+        // Note: Using base values (e.g., `hue`) not the P-Locked ones (e.g., `getHue()`) for saving
+        if (id == "hueInvert") xml.addAttribute("param", "value", isHueInverted() ? "1" : "0", tagIndex);
+        else if (id == "saturationInvert") xml.addAttribute("param", "value", isSaturationInverted() ? "1" : "0", tagIndex);
+        else if (id == "brightnessInvert") xml.addAttribute("param", "value", isBrightnessInverted() ? "1" : "0", tagIndex);
+        else if (id == "horizontalMirror") xml.addAttribute("param", "value", isHorizontalMirrorEnabled() ? "1" : "0", tagIndex);
+        else if (id == "verticalMirror") xml.addAttribute("param", "value", isVerticalMirrorEnabled() ? "1" : "0", tagIndex);
+        else if (id == "lumakeyInvert") xml.addAttribute("param", "value", isLumakeyInverted() ? "1" : "0", tagIndex);
+        else if (id == "toroidEnabled") xml.addAttribute("param", "value", isToroidEnabled() ? "1" : "0", tagIndex);
+        else if (id == "mirrorModeEnabled") xml.addAttribute("param", "value", isMirrorModeEnabled() ? "1" : "0", tagIndex);
+        else if (id == "wetModeEnabled") xml.addAttribute("param", "value", isWetModeEnabled() ? "1" : "0", tagIndex);
+        else if (id == "lumakeyValue") xml.addAttribute("param", "value", lumakeyValue, tagIndex);
+        else if (id == "mix") xml.addAttribute("param", "value", mix, tagIndex);
+        else if (id == "hue") xml.addAttribute("param", "value", hue, tagIndex);
+        else if (id == "saturation") xml.addAttribute("param", "value", saturation, tagIndex);
+        else if (id == "brightness") xml.addAttribute("param", "value", brightness, tagIndex);
+        else if (id == "temporalFilterMix") xml.addAttribute("param", "value", temporalFilterMix, tagIndex);
+        else if (id == "temporalFilterResonance") xml.addAttribute("param", "value", temporalFilterResonance, tagIndex);
+        else if (id == "sharpenAmount") xml.addAttribute("param", "value", sharpenAmount, tagIndex);
+        else if (id == "xDisplace") xml.addAttribute("param", "value", xDisplace, tagIndex);
+        else if (id == "yDisplace") xml.addAttribute("param", "value", yDisplace, tagIndex);
+        else if (id == "zDisplace") xml.addAttribute("param", "value", zDisplace, tagIndex);
+        else if (id == "rotate") xml.addAttribute("param", "value", rotate, tagIndex);
+        else if (id == "hueModulation") xml.addAttribute("param", "value", hueModulation, tagIndex);
+        else if (id == "hueOffset") xml.addAttribute("param", "value", hueOffset, tagIndex);
+        else if (id == "hueLFO") xml.addAttribute("param", "value", hueLFO, tagIndex);
+        else if (id == "delayAmount") xml.addAttribute("param", "value", delayAmount, tagIndex);
+        else if (id == "zFrequency") xml.addAttribute("param", "value", zFrequency, tagIndex);
+        else if (id == "xFrequency") xml.addAttribute("param", "value", xFrequency, tagIndex);
+        else if (id == "yFrequency") xml.addAttribute("param", "value", yFrequency, tagIndex);
+        else if (id == "xLfoAmp") xml.addAttribute("param", "value", xLfoAmp, tagIndex);
+        else if (id == "xLfoRate") xml.addAttribute("param", "value", xLfoRate, tagIndex);
+        else if (id == "yLfoAmp") xml.addAttribute("param", "value", yLfoAmp, tagIndex);
+        else if (id == "yLfoRate") xml.addAttribute("param", "value", yLfoRate, tagIndex);
+        else if (id == "zLfoAmp") xml.addAttribute("param", "value", zLfoAmp, tagIndex);
+        else if (id == "zLfoRate") xml.addAttribute("param", "value", zLfoRate, tagIndex);
+        else if (id == "rotateLfoAmp") xml.addAttribute("param", "value", rotateLfoAmp, tagIndex);
+        else if (id == "rotateLfoRate") xml.addAttribute("param", "value", rotateLfoRate, tagIndex);
+        else if (id == "vLumakeyValue") xml.addAttribute("param", "value", vLumakeyValue, tagIndex);
+        else if (id == "vMix") xml.addAttribute("param", "value", vMix, tagIndex);
+        else if (id == "vHue") xml.addAttribute("param", "value", vHue, tagIndex);
+        else if (id == "vSaturation") xml.addAttribute("param", "value", vSaturation, tagIndex);
+        else if (id == "vBrightness") xml.addAttribute("param", "value", vBrightness, tagIndex);
+        else if (id == "vTemporalFilterMix") xml.addAttribute("param", "value", vTemporalFilterMix, tagIndex);
+        else if (id == "vTemporalFilterResonance") xml.addAttribute("param", "value", vTemporalFilterResonance, tagIndex);
+        else if (id == "vSharpenAmount") xml.addAttribute("param", "value", vSharpenAmount, tagIndex);
+        else if (id == "vXDisplace") xml.addAttribute("param", "value", vXDisplace, tagIndex);
+        else if (id == "vYDisplace") xml.addAttribute("param", "value", vYDisplace, tagIndex);
+        else if (id == "vZDisplace") xml.addAttribute("param", "value", vZDisplace, tagIndex);
+        else if (id == "vRotate") xml.addAttribute("param", "value", vRotate, tagIndex);
+        else if (id == "vHueModulation") xml.addAttribute("param", "value", vHueModulation, tagIndex);
+        else if (id == "vHueOffset") xml.addAttribute("param", "value", vHueOffset, tagIndex);
+        else if (id == "vHueLFO") xml.addAttribute("param", "value", vHueLFO, tagIndex);
+        else if (id == "videoReactiveMode") xml.addAttribute("param", "value", videoReactiveMode ? "1" : "0", tagIndex);
+        else if (id == "lfoAmpMode") xml.addAttribute("param", "value", lfoAmpMode ? "1" : "0", tagIndex);
+        else if (id == "lfoRateMode") xml.addAttribute("param", "value", lfoRateMode ? "1" : "0", tagIndex);
+        else {
+             ofLogWarning("ParameterManager::saveToXml") << "Unknown parameter ID during save: " << id;
+             xml.addAttribute("param", "value", "", tagIndex); // Save empty if type unknown
+        }
+
+        // Save mappings (handle potential missing keys gracefully)
+        xml.addAttribute("param", "midiChannel", midiChannels.count(id) ? midiChannels.at(id) : -1, tagIndex);
+        xml.addAttribute("param", "midiControl", midiControls.count(id) ? midiControls.at(id) : -1, tagIndex);
+        xml.addAttribute("param", "oscAddr", oscAddresses.count(id) ? oscAddresses.at(id) : "", tagIndex);
+    }
+
+    // Save P-Lock data
+    // Ensure plocks tag exists and is clean before saving
+    if (xml.tagExists("plocks")) {
+         // If it exists, remove it first to avoid duplicate data or merging issues
+         xml.removeTag("plocks");
+    }
+    // Add a fresh plocks tag
     xml.addTag("plocks");
-    xml.pushTag("plocks");
+    xml.pushTag("plocks"); // Push into the newly added plocks tag
     
+    xml.setValue("smoothFactor", pLockSmoothFactor); // Save smooth factor inside plocks
+
     xml.addTag("locks");
     xml.pushTag("locks");
     
@@ -385,7 +489,7 @@ void ParameterManager::saveToXml(ofxXmlSettings& xml) const {
         }
         
         xml.setValue("values", valuesStr);
-        xml.popTag();
+        xml.popTag(); // pop lockTag
     }
     
     xml.popTag(); // pop locks
@@ -394,7 +498,35 @@ void ParameterManager::saveToXml(ofxXmlSettings& xml) const {
     xml.popTag(); // pop paramManager
 }
 
-// Toggle state getters/setters
+
+// --- Mapping Getters Implementation ---
+int ParameterManager::getMidiChannel(const std::string& paramId) const {
+    if (midiChannels.count(paramId)) {
+        return midiChannels.at(paramId);
+    }
+    return -1; // Default if not found
+}
+
+int ParameterManager::getMidiControl(const std::string& paramId) const {
+    if (midiControls.count(paramId)) {
+        return midiControls.at(paramId);
+    }
+    return -1; // Default if not found
+}
+
+std::string ParameterManager::getOscAddress(const std::string& paramId) const {
+    if (oscAddresses.count(paramId)) {
+        return oscAddresses.at(paramId);
+    }
+    return ""; // Default if not found
+}
+
+const std::vector<std::string>& ParameterManager::getAllParameterIds() const {
+    return parameterIds;
+}
+
+
+// --- Toggle state getters/setters (Implementation remains the same) ---
 bool ParameterManager::isHueInverted() const { return hueInvert; }
 void ParameterManager::setHueInverted(bool enabled) { hueInvert = enabled; }
 
@@ -423,168 +555,159 @@ bool ParameterManager::isWetModeEnabled() const { return wetModeEnabled; }
 void ParameterManager::setWetModeEnabled(bool enabled) { wetModeEnabled = enabled; }
 
 // Parameter getters/setters
-float ParameterManager::getLumakeyValue() const { return lumakeyValue + getPLockValue(0); }
+float ParameterManager::getLumakeyValue() const { return lumakeyValue + getPLockValue(PLockIndex::LUMAKEY_VALUE); }
 void ParameterManager::setLumakeyValue(float value, bool recordable) {
     lumakeyValue = value;
     if (recordable) {
-        recordParameter(0, value);
+        recordParameter(PLockIndex::LUMAKEY_VALUE, value);
     }
 }
 
-float ParameterManager::getMix() const { return mix + getPLockValue(1); }
+float ParameterManager::getMix() const { return mix + getPLockValue(PLockIndex::MIX); }
 void ParameterManager::setMix(float value, bool recordable) {
     mix = value;
     if (recordable) {
-        recordParameter(1, value);
+        recordParameter(PLockIndex::MIX, value);
     }
 }
 
-float ParameterManager::getHue() const { return hue * (1.0f + getPLockValue(2)); }
+float ParameterManager::getHue() const { return hue * (1.0f + getPLockValue(PLockIndex::HUE)); }
 void ParameterManager::setHue(float value, bool recordable) {
     hue = value;
     if (recordable) {
-        recordParameter(2, value);
+        recordParameter(PLockIndex::HUE, value);
     }
 }
 
-float ParameterManager::getSaturation() const { return saturation * (1.0f + getPLockValue(3)); }
+float ParameterManager::getSaturation() const { return saturation * (1.0f + getPLockValue(PLockIndex::SATURATION)); }
 void ParameterManager::setSaturation(float value, bool recordable) {
     saturation = value;
     if (recordable) {
-        recordParameter(3, value);
+        recordParameter(PLockIndex::SATURATION, value);
     }
 }
 
-float ParameterManager::getBrightness() const { return brightness * (1.0f + getPLockValue(4)); }
+float ParameterManager::getBrightness() const { return brightness * (1.0f + getPLockValue(PLockIndex::BRIGHTNESS)); }
 void ParameterManager::setBrightness(float value, bool recordable) {
     brightness = value;
     if (recordable) {
-        recordParameter(4, value);
+        recordParameter(PLockIndex::BRIGHTNESS, value);
     }
 }
 
-float ParameterManager::getTemporalFilterMix() const { return temporalFilterMix + getPLockValue(5); }
+float ParameterManager::getTemporalFilterMix() const { return temporalFilterMix + getPLockValue(PLockIndex::TEMPORAL_FILTER_MIX); }
 void ParameterManager::setTemporalFilterMix(float value, bool recordable) {
     temporalFilterMix = value;
     if (recordable) {
-        recordParameter(5, value);
+        recordParameter(PLockIndex::TEMPORAL_FILTER_MIX, value);
     }
 }
 
-float ParameterManager::getTemporalFilterResonance() const { return temporalFilterResonance + getPLockValue(6); }
+float ParameterManager::getTemporalFilterResonance() const { return temporalFilterResonance + getPLockValue(PLockIndex::TEMPORAL_FILTER_RESONANCE); }
 void ParameterManager::setTemporalFilterResonance(float value, bool recordable) {
     temporalFilterResonance = value;
     if (recordable) {
-        recordParameter(6, value);
+        recordParameter(PLockIndex::TEMPORAL_FILTER_RESONANCE, value);
     }
 }
 
-float ParameterManager::getSharpenAmount() const { return sharpenAmount + getPLockValue(7); }
+float ParameterManager::getSharpenAmount() const { return sharpenAmount + getPLockValue(PLockIndex::SHARPEN_AMOUNT); }
 void ParameterManager::setSharpenAmount(float value, bool recordable) {
     sharpenAmount = value;
     if (recordable) {
-        recordParameter(7, value);
+        recordParameter(PLockIndex::SHARPEN_AMOUNT, value);
     }
 }
 
-float ParameterManager::getXDisplace() const { return xDisplace + getPLockValue(8); }
+float ParameterManager::getXDisplace() const { return xDisplace + getPLockValue(PLockIndex::X_DISPLACE); }
 void ParameterManager::setXDisplace(float value, bool recordable) {
     xDisplace = value;
     if (recordable) {
-        recordParameter(8, value);
+        recordParameter(PLockIndex::X_DISPLACE, value);
     }
 }
 
-float ParameterManager::getYDisplace() const { return yDisplace + getPLockValue(9); }
+float ParameterManager::getYDisplace() const { return yDisplace + getPLockValue(PLockIndex::Y_DISPLACE); }
 void ParameterManager::setYDisplace(float value, bool recordable) {
     yDisplace = value;
     if (recordable) {
-        recordParameter(9, value);
+        recordParameter(PLockIndex::Y_DISPLACE, value);
     }
 }
 
-float ParameterManager::getZDisplace() const { return zDisplace * (1.0f + getPLockValue(10)); }
+float ParameterManager::getZDisplace() const { return zDisplace * (1.0f + getPLockValue(PLockIndex::Z_DISPLACE)); }
 void ParameterManager::setZDisplace(float value, bool recordable) {
     zDisplace = value;
     if (recordable) {
-        recordParameter(10, value);
+        recordParameter(PLockIndex::Z_DISPLACE, value);
     }
 }
 
-// Frequency getters/setters
+// Frequency getters/setters - Removed P-Lock functionality
 float ParameterManager::getZFrequency() const {
-    // Using parameter index 3 for zFrequency based on the original code's organization
-    return zFrequency + getPLockValue(3);
+    return zFrequency;
 }
 
 void ParameterManager::setZFrequency(float value, bool recordable) {
     zFrequency = value;
-    if (recordable) {
-        recordParameter(3, value);
-    }
+    // No P-Lock recording for frequency
 }
 
 float ParameterManager::getXFrequency() const {
-    // Using parameter index 4 for xFrequency
-    return xFrequency + getPLockValue(4);
+    return xFrequency;
 }
 
 void ParameterManager::setXFrequency(float value, bool recordable) {
     xFrequency = value;
-    if (recordable) {
-        recordParameter(4, value);
-    }
+    // No P-Lock recording for frequency
 }
 
 float ParameterManager::getYFrequency() const {
-    // Using parameter index 5 for yFrequency
-    return yFrequency + getPLockValue(5);
+    return yFrequency;
 }
 
 void ParameterManager::setYFrequency(float value, bool recordable) {
     yFrequency = value;
-    if (recordable) {
-        recordParameter(5, value);
-    }
+    // No P-Lock recording for frequency
 }
 
-float ParameterManager::getRotate() const { return rotate + getPLockValue(11); }
+float ParameterManager::getRotate() const { return rotate + getPLockValue(PLockIndex::ROTATE); }
 void ParameterManager::setRotate(float value, bool recordable) {
     rotate = value;
     if (recordable) {
-        recordParameter(11, value);
+        recordParameter(PLockIndex::ROTATE, value);
     }
 }
 
-float ParameterManager::getHueModulation() const { return hueModulation * (1.0f - getPLockValue(12)); }
+float ParameterManager::getHueModulation() const { return hueModulation * (1.0f - getPLockValue(PLockIndex::HUE_MODULATION)); }
 void ParameterManager::setHueModulation(float value, bool recordable) {
     hueModulation = value;
     if (recordable) {
-        recordParameter(12, value);
+        recordParameter(PLockIndex::HUE_MODULATION, value);
     }
 }
 
-float ParameterManager::getHueOffset() const { return hueOffset + getPLockValue(13); }
+float ParameterManager::getHueOffset() const { return hueOffset + getPLockValue(PLockIndex::HUE_OFFSET); }
 void ParameterManager::setHueOffset(float value, bool recordable) {
     hueOffset = value;
     if (recordable) {
-        recordParameter(13, value);
+        recordParameter(PLockIndex::HUE_OFFSET, value);
     }
 }
 
-float ParameterManager::getHueLFO() const { return hueLFO + getPLockValue(14); }
+float ParameterManager::getHueLFO() const { return hueLFO + getPLockValue(PLockIndex::HUE_LFO); }
 void ParameterManager::setHueLFO(float value, bool recordable) {
     hueLFO = value;
     if (recordable) {
-        recordParameter(14, value);
+        recordParameter(PLockIndex::HUE_LFO, value);
     }
 }
 
-int ParameterManager::getDelayAmount() const { return delayAmount + (int)(getPLockValue(15) * (P_LOCK_SIZE - 1.0f)); }
+int ParameterManager::getDelayAmount() const { return delayAmount + (int)(getPLockValue(PLockIndex::DELAY_AMOUNT) * (P_LOCK_SIZE - 1.0f)); }
 void ParameterManager::setDelayAmount(int value, bool recordable) {
     delayAmount = value;
     if (recordable) {
-        recordParameter(15, static_cast<float>(value) / (P_LOCK_SIZE - 1.0f));
+        recordParameter(PLockIndex::DELAY_AMOUNT, static_cast<float>(value) / (P_LOCK_SIZE - 1.0f));
     }
 }
 

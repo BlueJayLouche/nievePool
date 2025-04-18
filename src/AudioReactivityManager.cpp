@@ -29,7 +29,10 @@ AudioReactivityManager::~AudioReactivityManager() {
     closeAudioInput();
 }
 
-void AudioReactivityManager::setup(bool performanceMode) {
+// Updated signature to match header
+void AudioReactivityManager::setup(ParameterManager* paramManager, bool performanceMode) {
+    this->paramManager = paramManager; // Assign paramManager
+
     // Start with default band ranges if not configured
     if (bandRanges.empty()) {
         setupDefaultBandRanges();
@@ -130,6 +133,7 @@ void AudioReactivityManager::update() {
     applyMappings();
 }
 
+// Replaced with sputnikMesh version
 void AudioReactivityManager::analyzeAudio() {
     // Get amplitude spectrum from FFT
     const auto& fftResult = fft->getAmplitudeVector();
@@ -149,12 +153,11 @@ void AudioReactivityManager::analyzeAudio() {
         fftSmoothed.resize(spectrumSize, 0.0f);
     }
     
-    // Process the spectrum with sensitivity
-    float maxVal = 0.0001f; // Small non-zero value to avoid division by zero
-    
+    // More aggressive processing from sputnikMesh
+    float maxVal = 0.0f;
     for (int i = 0; i < spectrumSize; i++) {
-        // Apply sensitivity and exponential scaling
-        float value = powf(fftResult[i] * sensitivity * 5.0f, 1.5f);
+        // Apply high sensitivity and exponential scaling
+        float value = powf(fftResult[i] * sensitivity * 10.0f, 2.0f);
         
         // Track maximum value for normalization
         if (normalizationEnabled) {
@@ -165,24 +168,21 @@ void AudioReactivityManager::analyzeAudio() {
         fftSpectrum[i] = value;
     }
     
-    // Use a reasonable default if normalization is disabled
-    if (!normalizationEnabled || maxVal < 0.0001f) {
-        maxVal = 1.0f;
+    // If normalization is disabled, use a fixed value instead
+    if (!normalizationEnabled) {
+        maxVal = 1.0f;  // Use raw values without normalization
     }
     
-    // Normalize (if enabled) and smooth
+    // Normalize (if enabled) and smooth (sputnikMesh version)
     for (int i = 0; i < spectrumSize; i++) {
-        // Normalize by max value
-        float processedValue = fftSpectrum[i] / maxVal;
+        // Normalize by max value or use direct value if normalization is disabled
+        float processedValue = (maxVal > 0) ? fftSpectrum[i] / maxVal : 0.0f;
         
-        // Apply smoothing with some peak detection (rise faster than fall)
-        if (processedValue > fftSmoothed[i]) {
-            // Fast attack (rise quickly)
-            fftSmoothed[i] = fftSmoothed[i] * 0.7f + processedValue * 0.3f;
-        } else {
-            // Slow decay (fall slowly) based on smoothing setting
-            fftSmoothed[i] = fftSmoothed[i] * smoothing + processedValue * (1.0f - smoothing);
-        }
+        // More aggressive smoothing with peak detection
+        fftSmoothed[i] = std::max(
+            fftSmoothed[i] * smoothing,  // Decay
+            processedValue * (1.0f - smoothing)  // New value
+        );
     }
 }
 
@@ -225,33 +225,24 @@ void AudioReactivityManager::groupBands() {
     }
 }
 
+// Replaced with sputnikMesh version
 void AudioReactivityManager::applyMappings() {
     for (const auto& mapping : mappings) {
         if (mapping.band >= 0 && mapping.band < numBands) {
-            // Get the audio band value (0.0 to 1.0)
+            // Get the audio band value
             float value = smoothedBands[mapping.band];
             
-            if (mapping.additive) {
-                // For additive mappings, transform the 0.0-1.0 range to -1.0...+1.0 range
-                float centeredValue = (value * 2.0f - 1.0f) * mapping.scale;
-                
-                // Scale and clamp to min/max
-                centeredValue = ofClamp(centeredValue, mapping.min, mapping.max);
-                
-                // Apply the delta to the parameter
-                applyParameterValue(mapping.paramId, centeredValue, true);
-            }
-            else {
-                // For non-additive (direct) mappings
-                float scaledValue = mapping.min + value * (mapping.max - mapping.min);
-                float clampedValue = ofClamp(scaledValue, mapping.min, mapping.max);
-                
-                // Set the parameter directly to this value
-                applyParameterValue(mapping.paramId, clampedValue, false);
-            }
+            // Scale and constrain to min/max range (sputnikMesh logic)
+            value = mapping.min + value * mapping.scale * (mapping.max - mapping.min);
+            value = ofClamp(value, mapping.min, mapping.max);
+            
+            // Apply to parameter using the existing applyParameterValue method
+            // which handles the parameter ID matching for this project
+            applyParameterValue(mapping.paramId, value, mapping.additive);
         }
     }
 }
+
 
 void AudioReactivityManager::applyParameterValue(const std::string& paramId, float value, bool additive) {
     if (!paramManager) return;
@@ -507,6 +498,7 @@ void AudioReactivityManager::closeAudioInput() {
     }
 }
 
+// Replaced with sputnikMesh version (including NaN/Inf check and explicit FFT computation trigger)
 void AudioReactivityManager::audioIn(ofSoundBuffer &input) {
     // Use mutex to protect shared data
     std::lock_guard<std::mutex> lock(audioMutex);
@@ -531,20 +523,28 @@ void AudioReactivityManager::audioIn(ofSoundBuffer &input) {
     for (int i = 0; i < numSamples; i++) {
         float sample = inputBuffer[i];
         if (std::isnan(sample) || std::isinf(sample)) {
-            sample = 0.0f;
+            sample = 0.0f; // Replace NaN/Inf with 0
         }
         audioBuffer[i] = sample;
         sumSquared += sample * sample;
     }
     
-    // Update input level
-    audioInputLevel = sqrt(sumSquared / numSamples);
+    // Update input level (avoid division by zero)
+    audioInputLevel = (numSamples > 0) ? sqrt(sumSquared / numSamples) : 0.0f;
     
-    // Compute FFT
+    // Compute FFT using pointer-based API to ensure computation
     if (fft) {
+        // Explicitly set signal to trigger FFT computation
         fft->setSignal(audioBuffer.data());
+        
+        // Use getAmplitude() to ensure FFT is computed and get pointer (optional check)
+        float* amplitudePtr = fft->getAmplitude();
+        // if (!amplitudePtr) {
+        //     ofLogWarning("AudioReactivityManager") << "Failed to get FFT amplitude pointer after setSignal";
+        // }
     }
 }
+
 
 // Getter and setter methods
 
@@ -611,6 +611,51 @@ void AudioReactivityManager::clearMappings() {
 
 std::vector<AudioReactivityManager::BandMapping> AudioReactivityManager::getMappings() const {
     return mappings;
+}
+
+// Helper function to add default mappings
+void AudioReactivityManager::addDefaultMappings() {
+    ofLogNotice("AudioReactivityManager") << "Adding default audio mappings";
+    
+    BandMapping bassMapping;
+    bassMapping.band = 0; bassMapping.paramId = "z_displace"; bassMapping.scale = 0.5f;
+    bassMapping.min = -0.2f; bassMapping.max = 0.2f; bassMapping.additive = false;
+    addMapping(bassMapping);
+    
+    BandMapping lowMidsMapping;
+    lowMidsMapping.band = 2; lowMidsMapping.paramId = "x_displace"; lowMidsMapping.scale = 0.05f;
+    lowMidsMapping.min = -0.1f; lowMidsMapping.max = 0.1f; lowMidsMapping.additive = false;
+    addMapping(lowMidsMapping);
+    
+    BandMapping midsMapping;
+    midsMapping.band = 3; midsMapping.paramId = "y_displace"; midsMapping.scale = 0.5f;
+    midsMapping.min = -0.1f; midsMapping.max = 0.1f; midsMapping.additive = false;
+    addMapping(midsMapping);
+    
+    BandMapping highMidsMapping;
+    highMidsMapping.band = 4; highMidsMapping.paramId = "hue"; highMidsMapping.scale = 0.01f;
+    highMidsMapping.min = 0.8f; highMidsMapping.max = 1.2f; highMidsMapping.additive = false;
+    addMapping(highMidsMapping);
+
+    BandMapping presenceMapping;
+    presenceMapping.band = 5; presenceMapping.paramId = "rotate"; presenceMapping.scale = 0.05f;
+    presenceMapping.min = -0.05f; presenceMapping.max = 0.05f; presenceMapping.additive = true; // Additive rotation
+    addMapping(presenceMapping);
+
+    BandMapping brillianceMapping;
+    brillianceMapping.band = 6; brillianceMapping.paramId = "saturation"; brillianceMapping.scale = 0.5f;
+    brillianceMapping.min = 0.5f; brillianceMapping.max = 1.5f; brillianceMapping.additive = false; // Direct set
+    addMapping(brillianceMapping);
+
+    BandMapping airMapping;
+    airMapping.band = 7; airMapping.paramId = "brightness"; airMapping.scale = 0.5f;
+    airMapping.min = 0.5f; airMapping.max = 1.5f; airMapping.additive = false; // Direct set
+    addMapping(airMapping);
+    
+    BandMapping sharpenMapping;
+    sharpenMapping.band = 3; sharpenMapping.paramId = "sharpenAmount"; sharpenMapping.scale = 0.2f;
+    sharpenMapping.min = 0.0f; sharpenMapping.max = 0.2f; sharpenMapping.additive = false; 
+    addMapping(sharpenMapping);
 }
 
 // XML Configuration methods
@@ -689,6 +734,11 @@ void AudioReactivityManager::loadFromXml(ofxXmlSettings& xml) {
                 }
             }
             xml.popTag(); // pop mappings
+        }
+
+        // If no mappings were loaded from XML, add the defaults
+        if (mappings.empty()) {
+            addDefaultMappings();
         }
         
         // Make sure to pop the audioReactivity tag
