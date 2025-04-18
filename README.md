@@ -15,6 +15,10 @@ NievePool is an experimental video feedback and effects application built with o
 *   **Configurable Settings:** Load and save parameters, mappings, input sources, and device preferences via `settings.xml`.
 *   **Debug Overlay:** Toggleable display showing performance, parameter values, input status, and audio analysis.
 
+## Acknowledgements
+
+This project is heavily based on the fantastic work of Andrei Jay on the original [waaaave_pool](https://github.com/ex-zee-ex/waaaave_pool). Many thanks for the inspiration and foundational code!
+
 ## Setup & Running
 
 1.  **Install openFrameworks:** Follow the setup guide for your operating system on the [openFrameworks website](https://openframeworks.cc/setup/).
@@ -185,7 +189,7 @@ You would then send an OSC message like `/nieve/saturation 0.5` to set saturatio
 
 *   **`** : Toggle Debug Overlay
 *   **I** : Cycle Input Source (Camera -> NDI -> Video File)
-*   **< / >** : (NDI Mode) Attempt to switch NDI source index
+*   **< / >** : (NDI Mode) Attempt to switch NDI source index (Under Development)
 *   **Shift + < / >** : (Camera Mode) Switch camera device
 *   **A** : Toggle Audio Reactivity
 *   **N** : Toggle Audio Normalization
