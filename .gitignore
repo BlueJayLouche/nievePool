@@ -90,6 +90,4 @@ build/
 *.pdb
 
 # Project-specific
-settings.xml
-mapping_template.xml
-
+*.xml # Ignore all XML files (like settings, mappings, etc.)
