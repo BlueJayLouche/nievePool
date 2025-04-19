@@ -125,6 +125,10 @@ int MidiManager::getCurrentDeviceIndex() const {
     return currentDeviceIndex;
 }
 
+std::string MidiManager::getPreferredDeviceName() const {
+    return preferredDeviceName;
+}
+
 void MidiManager::loadSettings(ofxXmlSettings& xml) {
     // We're already inside the paramManager tag from ofApp::setup
     if (xml.tagExists("midi")) {
@@ -153,8 +157,14 @@ void MidiManager::loadSettings(ofxXmlSettings& xml) {
 }
 
 void MidiManager::saveSettings(ofxXmlSettings& xml) const {
-    // Save preferred device name
-    xml.setValue("midi:preferredDevice", getCurrentDeviceName());
+    // Save the preferred device name loaded from settings, not the currently connected one
+    // This preserves the user's preference in settings.xml
+    if (!preferredDeviceName.empty()) {
+        xml.setValue("midi:preferredDevice", preferredDeviceName);
+    } else {
+        // If no preferred name was loaded, save the current one (or "Not connected")
+        xml.setValue("midi:preferredDevice", getCurrentDeviceName());
+    }
 }
 
 void MidiManager::processControlChange(const ofxMidiMessage& message) {

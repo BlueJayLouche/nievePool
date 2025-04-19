@@ -2,13 +2,15 @@
 
 //--------------------------------------------------------------
 void ofApp::setup() {
+    std::string loadedNdiSourceName = ""; // Declare variable to store loaded NDI source name preference
+
     // Check for platform-specific settings
     #if defined(TARGET_LINUX) && (defined(__arm__) || defined(__aarch64__))
         bool performanceMode = true;
         int targetFramerate = 24;
         bool platformIsRaspberryPi = true;
         // Platform flags for later use
-        bool performanceMode = true; 
+        bool performanceMode = true;
         bool platformIsRaspberryPi = true;
         ofLogNotice("ofApp") << "Detected Raspberry Pi: enabling performance mode";
     #else
@@ -16,28 +18,28 @@ void ofApp::setup() {
         bool performanceMode = false;
         bool platformIsRaspberryPi = false;
     #endif
-    
+
     // Framerate will be set after loading settings
-    
+
     // Continue with normal setup...
     ofSetVerticalSync(true); // Keep VSync setting early
     ofBackground(0);
     ofHideCursor();
-    
+
     // Initialize parameter manager first
     paramManager = std::make_unique<ParameterManager>();
     paramManager->setup(); // This now loads settings including mappings
-    
+
     // Set performance mode based on platform
     if (platformIsRaspberryPi) {
         paramManager->setPerformanceModeEnabled(true);
-        paramManager->setPerformanceScale(30); 
+        paramManager->setPerformanceScale(30);
     paramManager->setHighQualityEnabled(false);
         // Don't set framerate here anymore
     } else {
         // Don't set framerate here anymore
     }
-    
+
     // Check if settings file exists and validate structure (Keep this?)
     ofFile settingsFile(ofToDataPath("settings.xml"));
     bool resetNeeded = false;
@@ -60,7 +62,7 @@ void ofApp::setup() {
         resetSettingsFile();
         paramManager->loadSettings(); // Reload after reset
     }
-    
+
     // Load app-level settings first
     ofxXmlSettings xml;
     if (xml.loadFile(ofToDataPath("settings.xml"))) {
@@ -69,9 +71,8 @@ void ofApp::setup() {
             debugEnabled = xml.getValue("debugEnabled", false);
             configWidth = xml.getValue("width", 1024);
             configHeight = xml.getValue("height", 768);
-            // Load framerate from XML, default to 30 if missing/invalid later
-            configFrameRate = xml.getValue("frameRate", 30); 
-            
+            // Framerate is now loaded via ParameterManager
+
             // Load video input settings
             std::string sourceStr = xml.getValue("videoInputSource", "CAMERA");
             if (sourceStr == "NDI") {
@@ -83,9 +84,12 @@ void ofApp::setup() {
             }
             videoFilePath = xml.getValue("videoFilePath", videoFilePath);
             currentNdiSourceIndex = xml.getValue("ndiSourceIndex", 0); // Load NDI source index, default to 0
+            loadedNdiSourceName = xml.getValue("ndiSourceName", ""); // Load preferred NDI source name (assign to declared variable)
             ofLogNotice("ofApp::setup") << "Initial video input source: " << sourceStr;
             ofLogNotice("ofApp::setup") << "Video file path: " << videoFilePath;
-            ofLogNotice("ofApp::setup") << "Loaded NDI source index: " << currentNdiSourceIndex;
+            ofLogNotice("ofApp::setup") << "Loaded NDI source index preference: " << currentNdiSourceIndex;
+            ofLogNotice("ofApp::setup") << "Loaded NDI source name preference: " << loadedNdiSourceName;
+
 
             xml.popTag(); // pop app
         } else {
@@ -93,83 +97,122 @@ void ofApp::setup() {
         }
     } else {
          ofLogWarning("ofApp::setup") << "Could not load settings.xml, using default app settings.";
-         // Ensure configFrameRate has a default if XML load failed
-         configFrameRate = 30; 
+         // Framerate default handled by ParameterManager or below
     }
 
     // --- Apply Final Framerate ---
-    // Validate loaded/default framerate, apply platform defaults only if invalid
-    if (configFrameRate <= 0) {
-        ofLogWarning("ofApp::setup") << "Invalid frameRate (" << configFrameRate << ") loaded or defaulted. Applying platform default.";
+    // Get framerate from ParameterManager (which loaded it from video:frameRate)
+    int targetFrameRate = paramManager->getVideoFrameRate();
+
+    // Validate the framerate from ParameterManager
+    if (targetFrameRate <= 0) {
+        ofLogWarning("ofApp::setup") << "Invalid frameRate (" << targetFrameRate
+                                     << ") loaded from ParameterManager or defaulted. Applying platform default.";
         #if defined(TARGET_LINUX) && (defined(__arm__) || defined(__aarch64__))
-            configFrameRate = 24; // RPi default
+            targetFrameRate = 24; // RPi default
         #else
-            configFrameRate = 30; // Non-RPi default
+            targetFrameRate = 30; // Non-RPi default
         #endif
     }
-    ofLogNotice("ofApp::setup") << "Setting final frame rate to: " << configFrameRate;
-    ofSetFrameRate(configFrameRate); 
+    ofLogNotice("ofApp::setup") << "Setting final frame rate to: " << targetFrameRate;
+    ofSetFrameRate(targetFrameRate);
 
-    // Set window shape 
+    // Set window shape
     ofSetWindowShape(configWidth, configHeight);
-    
+
     // Continue with the standard setup
     // ofSetVerticalSync(true); // Moved earlier
     ofBackground(0);
     ofHideCursor();
     ofDisableArbTex();
-    
+
     // Initialize shader manager
     shaderManager = std::make_unique<ShaderManager>();
     shaderManager->setup();
-    
+
     // Initialize video feedback manager (FBOs etc.)
     videoManager = std::make_unique<VideoFeedbackManager>(paramManager.get(), shaderManager.get());
-    videoManager->setup(configWidth, configHeight);  
+    videoManager->setup(configWidth, configHeight);
 
     // --- Setup Input Sources ---
-    
+
     // 1. Camera Setup (Now handled mostly within VideoFeedbackManager)
     // cameraInitialized = videoManager->isCameraInitialized(); // Get status from videoManager
 
-    // 2. NDI Setup 
-    // NOTE: Removing explicit CreateFinder/FindSenders here. 
-    // GetSenderCount() in keyPressed should handle finding sources implicitly.
-    // We still need to attempt an initial connection if NDI is the starting source.
+    // 2. NDI Setup
+    // 2. NDI Setup
     if (currentInputSource == NDI) {
-        // Attempt to connect to the source index loaded from settings
-        // Note: currentNdiSourceIndex is already loaded from XML earlier in setup()
-        ofLogNotice("ofApp::setup") << "Attempting initial connection to NDI source index loaded from settings: " << currentNdiSourceIndex;
-        if (!ndiReceiver.CreateReceiver(currentNdiSourceIndex)) {
-             ofLogWarning("ofApp::setup") << "Failed to create initial NDI receiver for source index " << currentNdiSourceIndex << ". Check if source is available.";
-        } else {
-             ofLogNotice("ofApp::setup") << "Successfully created initial NDI receiver for source index " << currentNdiSourceIndex;
+        int nSources = ndiReceiver.GetSenderCount(); // Populate internal list
+        ofLogNotice("ofApp::setup") << "Found " << nSources << " NDI sources.";
+        bool connected = false;
+
+        // Try connecting by preferred name first
+        if (!loadedNdiSourceName.empty() && nSources > 0) {
+            ofLogNotice("ofApp::setup") << "Attempting connection by preferred name: " << loadedNdiSourceName;
+            char currentNameBuffer[256];
+            for (int i = 0; i < nSources; ++i) {
+                ndiReceiver.GetSenderName(currentNameBuffer, sizeof(currentNameBuffer), i);
+                if (loadedNdiSourceName == std::string(currentNameBuffer)) {
+                    ofLogNotice("ofApp::setup") << "Found matching source at index " << i;
+                    if (ndiReceiver.CreateReceiver(i)) {
+                        ofLogNotice("ofApp::setup") << "Successfully connected to NDI source by name: " << loadedNdiSourceName << " (Index: " << i << ")";
+                        currentNdiSourceIndex = i; // Update index based on name match
+                        connected = true;
+                    } else {
+                        ofLogWarning("ofApp::setup") << "Failed to create NDI receiver for source: " << loadedNdiSourceName << " (Index: " << i << ")";
+                    }
+                    break; // Stop searching once found
+                }
+            }
+            if (!connected) {
+                 ofLogWarning("ofApp::setup") << "Preferred NDI source name '" << loadedNdiSourceName << "' not found.";
+            }
+        }
+
+        // If not connected by name, try connecting by preferred index
+        if (!connected) {
+            ofLogNotice("ofApp::setup") << "Attempting connection by preferred index: " << currentNdiSourceIndex;
+            if (currentNdiSourceIndex >= 0 && currentNdiSourceIndex < nSources) {
+                 if (ndiReceiver.CreateReceiver(currentNdiSourceIndex)) {
+                     ofLogNotice("ofApp::setup") << "Successfully connected to NDI source by index: " << currentNdiSourceIndex << " (" << ndiReceiver.GetSenderName() << ")";
+                     connected = true;
+                 } else {
+                     ofLogWarning("ofApp::setup") << "Failed to create NDI receiver for source index " << currentNdiSourceIndex << ". Check if source is available.";
+                 }
+            } else {
+                 ofLogWarning("ofApp::setup") << "Preferred NDI source index " << currentNdiSourceIndex << " is out of range (0-" << nSources-1 << ").";
+            }
+        }
+
+        // If still not connected, log a warning
+        if (!connected) {
+             ofLogWarning("ofApp::setup") << "Could not connect to preferred NDI source by name or index.";
         }
     }
     // Allocate texture regardless of initial connection success
-    ndiTexture.allocate(configWidth, configHeight, GL_RGBA); 
+    ndiTexture.allocate(configWidth, configHeight, GL_RGBA);
 
     // 3. Video Player Setup
     ofLogNotice("ofApp::setup") << "Setting up video player with file: " << videoFilePath;
     videoPlayer.load(videoFilePath);
     videoPlayer.setLoopState(OF_LOOP_NORMAL);
     if (currentInputSource == VIDEO_FILE) {
-        videoPlayer.play(); 
+        videoPlayer.play();
     }
 
     // Allocate the texture that holds the currently selected input for debug preview
     currentInputTexture.allocate(videoManager->getMainFbo().getWidth(), videoManager->getMainFbo().getHeight(), GL_RGBA);
     ofLogNotice("ofApp::setup") << "Allocated currentInputTexture: " << currentInputTexture.getWidth() << "x" << currentInputTexture.getHeight();
 
-    // Initialize MIDI manager 
+    // Initialize MIDI manager
     midiManager = std::make_unique<MidiManager>(paramManager.get());
-    midiManager->setup(); 
-    
+    midiManager->setup();
+
     // Initialize Audio Reactivity manager
     audioManager = std::make_unique<AudioReactivityManager>(paramManager.get());
     // Pass paramManager and performanceMode to setup as required by the updated signature
-    audioManager->setup(paramManager.get(), performanceMode); 
-    
+    audioManager->setup(paramManager.get(), performanceMode);
+
     // Load remaining manager settings (VideoFeedbackManager) from XML
     if (xml.loadFile(ofToDataPath("settings.xml"))) {
          if (xml.pushTag("paramManager")) {
@@ -194,7 +237,7 @@ void ofApp::setup() {
         frameRateHistory[i] = 0.0f;
     }
 
-    // --- OSC Setup --- 
+    // --- OSC Setup ---
     int currentOscPort = paramManager->getOscPort(); // Get port from ParameterManager
     ofLogNotice("ofApp::setup") << "Listening for OSC messages on port " << currentOscPort;
     oscReceiver.setup(currentOscPort);
@@ -204,7 +247,7 @@ void ofApp::setup() {
 
 void ofApp::resetSettingsFile() {
     ofxXmlSettings xml;
-    
+
     xml.addTag("app");
     xml.pushTag("app");
     xml.setValue("version", "1.0.0");
@@ -212,15 +255,16 @@ void ofApp::resetSettingsFile() {
     xml.setValue("debugEnabled", debugEnabled ? 1 : 0);
     xml.setValue("width", configWidth);
     xml.setValue("height", configHeight);
-    xml.setValue("frameRate", configFrameRate);
-    xml.setValue("videoInputSource", "CAMERA"); 
+    // xml.setValue("frameRate", configFrameRate); // Removed - Handled by ParameterManager save
+    xml.setValue("videoInputSource", "CAMERA");
     xml.setValue("videoFilePath", "input.mov");
     xml.setValue("ndiSourceIndex", 0); // Add default NDI source index on reset
-    xml.popTag(); 
-    
+    xml.setValue("ndiSourceName", ""); // Add default NDI source name on reset
+    xml.popTag();
+
     xml.addTag("paramManager");
     // ParameterManager::saveToXml will populate this on next save
-    
+
     try {
         bool saved = xml.saveFile(ofToDataPath("settings.xml"));
         ofLogNotice("ofApp") << "Settings file reset " << (saved ? "successfully" : "unsuccessfully");
@@ -232,7 +276,7 @@ void ofApp::resetSettingsFile() {
 //--------------------------------------------------------------
 void ofApp::update() {
     float startTime = ofGetElapsedTimef();
-    
+
     paramManager->update();
     midiManager->update();
     audioManager->update(); // Update audio manager
@@ -347,29 +391,29 @@ void ofApp::update() {
                         }
                     } catch (const std::exception& e) {
                          ofLogError("ofApp::update") << "OSC Error processing message " << incomingAddr << ": " << e.what();
-                         handled = true; 
+                         handled = true;
                     }
                 } else {
                      ofLogWarning("ofApp::update") << "OSC: Received message with != 1 arguments for address: " << incomingAddr;
-                     handled = true; 
+                     handled = true;
                 }
-                break; 
+                break;
             }
         }
         if (!handled) {
              ofLogVerbose("ofApp::update") << "OSC: Received unhandled message: " << incomingAddr;
         }
     }
-    
+
     // Calculate frame time
     float endTime = ofGetElapsedTimef();
-    lastFrameTime = (endTime - startTime) * 1000.0f; 
-    
+    lastFrameTime = (endTime - startTime) * 1000.0f;
+
     frameTimeHistory.push_back(lastFrameTime);
     if (frameTimeHistory.size() > 150) {
         frameTimeHistory.pop_front();
     }
-    
+
     averageFrameTime = 0;
     for (float time : frameTimeHistory) {
         averageFrameTime += time;
@@ -377,7 +421,7 @@ void ofApp::update() {
     if (!frameTimeHistory.empty()) {
        averageFrameTime /= frameTimeHistory.size();
     }
-    
+
     frameCounter++;
 }
 
@@ -389,7 +433,7 @@ void ofApp::draw() {
     #else
     bool safeDrawMode = false;
     #endif
-    
+
     if (safeDrawMode) {
         try {
             videoManager->draw();
@@ -414,37 +458,65 @@ void ofApp::draw() {
 void ofApp::drawDebugInfo() {
     ofPushStyle();
     ofEnableAlphaBlending();
-    
+
     ofSetColor(255, 255, 0);
     ofDrawBitmapString("DEBUG MODE", 10, 15);
-    
-    bool isSmallScreen = (ofGetWidth() < 800 || ofGetHeight() < 600);
+
+    bool isSmallScreen = (ofGetWidth() < 1200 || ofGetHeight() < 700); // Adjusted breakpoint for 4 columns
     int margin = isSmallScreen ? 5 : 10;
     int lineHeight = isSmallScreen ? 12 : 15;
-    int columnWidth = isSmallScreen ? (ofGetWidth() / 3 - margin) : (ofGetWidth() / 3 - margin * 2);
-    
-    ofSetColor(0, 0, 0, 180);
-    int sysInfoHeight = lineHeight * 6;
-    ofDrawRectangle(margin, margin, columnWidth, sysInfoHeight);
-    int perfInfoHeight = lineHeight * 6 + 40; 
-    ofDrawRectangle(margin, margin + sysInfoHeight + 5, columnWidth, perfInfoHeight);
-    ofDrawRectangle(ofGetWidth() / 3 + margin, margin, columnWidth, ofGetHeight() - margin * 2 - lineHeight * 5);
-    ofDrawRectangle(ofGetWidth() * 2 / 3 + margin, margin, columnWidth, ofGetHeight() - margin * 2 - lineHeight * 5);
-    ofDrawRectangle(margin, ofGetHeight() - lineHeight * 6 - margin, ofGetWidth() - margin * 2, lineHeight * 6);
-    
-    drawSystemInfo(margin + 5, margin + 15, lineHeight);
-    drawPerformanceInfo(margin + 5, margin + sysInfoHeight + 20, lineHeight);
-    drawParameterInfo(ofGetWidth() / 3 + margin + 5, margin + 15, lineHeight);
-    drawAudioDebugInfo(ofGetWidth() * 2 / 3 + margin + 5, margin + 15, lineHeight);
-    drawVideoInfo(margin + 5, ofGetHeight() - lineHeight * 5 - margin, lineHeight);
-    
-    ofSetColor(0, 0, 0, 200);
-    ofDrawRectangle(margin, ofGetHeight() - lineHeight * 3, ofGetWidth() - margin * 2, lineHeight * 3);
+    // Calculate for 4 columns
+    int totalWidth = ofGetWidth() - margin * 2; // Total available width
+    int columnWidth = (totalWidth - margin * 3) / 4; // Width per column, accounting for 3 inter-column margins
+    int col1X = margin;
+    int col2X = col1X + columnWidth + margin;
+    int col3X = col2X + columnWidth + margin;
+    int col4X = col3X + columnWidth + margin;
+    int contentY = margin + lineHeight * 2; // Start content below title with some padding
+    int bottomHintHeight = lineHeight * 4; // Height for bottom hints area
+    int availableHeight = ofGetHeight() - margin * 2 - bottomHintHeight; // Height available for columns
+
+    ofSetColor(0, 0, 0, 180); // Background rectangles
+    // Column 1: System & Performance
+    ofDrawRectangle(col1X, margin, columnWidth, availableHeight);
+    // Column 2: Video Info
+    ofDrawRectangle(col2X, margin, columnWidth, availableHeight);
+    // Column 3: MIDI Info
+    ofDrawRectangle(col3X, margin, columnWidth, availableHeight);
+    // Column 4: Parameters & Audio
+    ofDrawRectangle(col4X, margin, columnWidth, availableHeight);
+    // Bottom area for hints
+    ofDrawRectangle(margin, ofGetHeight() - bottomHintHeight - margin, totalWidth, bottomHintHeight);
+
+    // Draw content in columns
+    int currentY = contentY;
+    // Column 1
+    drawSystemInfo(col1X + 5, currentY, lineHeight);
+    currentY += lineHeight * 5 + lineHeight; // Approx height for System Info + padding
+    drawPerformanceInfo(col1X + 5, currentY, lineHeight);
+
+    // Column 2
+    drawVideoInfo(col2X + 5, contentY, lineHeight);
+
+    // Column 3
+    drawMidiInfo(col3X + 5, contentY, lineHeight);
+
+    // Column 4
+    currentY = contentY;
+    drawParameterInfo(col4X + 5, currentY, lineHeight);
+    // Estimate height used by ParameterInfo and add padding
+    // Note: This estimation might need adjustment if ParameterInfo content changes
+    currentY += lineHeight * 20;
+    drawAudioDebugInfo(col4X + 5, currentY, lineHeight);
+
+    // Draw bottom hints
+    ofSetColor(0, 0, 0, 200); // Ensure background for hints is drawn
+    ofDrawRectangle(margin, ofGetHeight() - bottomHintHeight - margin, totalWidth, bottomHintHeight); // Redraw just in case
     ofSetColor(180, 180, 255);
     ofDrawBitmapString("Press ` to toggle debug display", margin + 5, ofGetHeight() - lineHeight * 3 + 12);
     ofDrawBitmapString("Press A to toggle audio reactivity", margin + 5, ofGetHeight() - lineHeight * 2 + 12);
     ofDrawBitmapString("Press N to toggle audio normalization", margin + 5, ofGetHeight() - lineHeight + 12);
-    
+
     ofPopStyle();
 
     // --- Draw NDI Preview (in debug mode) ---
@@ -452,7 +524,7 @@ void ofApp::drawDebugInfo() {
         ofPushMatrix(); ofPushStyle();
         int ndiPreviewWidth = 160; int ndiPreviewHeight = 120;
         int ndiPreviewX = ofGetWidth() - ndiPreviewWidth - 20;
-        int ndiPreviewY = ofGetHeight() - ndiPreviewHeight - 20 - 150 - 35 - 10; 
+        int ndiPreviewY = ofGetHeight() - ndiPreviewHeight - 20 - 150 - 35 - 10;
         ofSetColor(0, 0, 0, 200);
         ofDrawRectangle(ndiPreviewX - 10, ndiPreviewY - 25, ndiPreviewWidth + 20, ndiPreviewHeight + 35);
         ofSetColor(255);
@@ -460,7 +532,7 @@ void ofApp::drawDebugInfo() {
         ndiTexture.draw(ndiPreviewX, ndiPreviewY, ndiPreviewWidth, ndiPreviewHeight);
         ofPopStyle(); ofPopMatrix();
     }
-    
+
     // Draw Input Preview (Camera, NDI, or Video File)
     ofPushMatrix(); ofPushStyle();
     int previewWidth = 200; int previewHeight = 150;
@@ -469,7 +541,7 @@ void ofApp::drawDebugInfo() {
     ofSetColor(0, 0, 0, 200);
     ofDrawRectangle(previewX - 10, previewY - 25, previewWidth + 20, previewHeight + 35);
     ofSetColor(255);
-    ofDrawBitmapString("Input Preview:", previewX, previewY - 10); 
+    ofDrawBitmapString("Input Preview:", previewX, previewY - 10);
     ofTranslate(previewX, previewY);
     if (currentInputTexture.isAllocated()) {
          ofSetColor(255);
@@ -492,9 +564,9 @@ void ofApp::exit() {
     audioManager->exit();
 
     // Release NDI resources
-    ndiReceiver.ReleaseReceiver(); 
+    ndiReceiver.ReleaseReceiver();
     // No need to release finder if we didn't explicitly create it persistently
-    
+
     // Save settings before exiting
     ofxXmlSettings xml;
     if (xml.loadFile(ofToDataPath("settings.xml"))) {
@@ -507,29 +579,35 @@ void ofApp::exit() {
     xml.setValue("version", "1.0.0"); // Update version or keep existing
     xml.setValue("lastSaved", ofGetTimestampString());
     xml.setValue("debugEnabled", debugEnabled ? 1 : 0);
-    xml.setValue("width", ofGetWidth());      
+    xml.setValue("width", ofGetWidth());
     xml.setValue("height", ofGetHeight());
-    xml.setValue("frameRate", (int)ofGetTargetFrameRate());
-    
+    // xml.setValue("frameRate", (int)ofGetTargetFrameRate()); // Removed - Handled by ParameterManager save
+
     // Save current input source
     std::string sourceStr = "CAMERA";
     if (currentInputSource == NDI) sourceStr = "NDI";
     else if (currentInputSource == VIDEO_FILE) sourceStr = "VIDEO_FILE";
     xml.setValue("videoInputSource", sourceStr);
-    xml.setValue("videoFilePath", videoFilePath); 
+    xml.setValue("videoFilePath", videoFilePath);
     xml.setValue("ndiSourceIndex", currentNdiSourceIndex); // Save NDI source index
+    // Save current NDI source name if connected
+    std::string currentNdiName = "";
+    if (ndiReceiver.ReceiverConnected()) {
+        currentNdiName = ndiReceiver.GetSenderName();
+    }
+    xml.setValue("ndiSourceName", currentNdiName);
 
     xml.popTag(); // pop app
-    
+
     // Save manager settings
-    paramManager->saveToXml(xml); 
+    paramManager->saveToXml(xml);
     if (xml.pushTag("paramManager")) { // Push into the tag created/found by paramManager
         audioManager->saveToXml(xml);
         videoManager->saveToXml(xml);
         midiManager->saveSettings(xml);
-        xml.popTag(); 
+        xml.popTag();
     }
-    
+
     try {
         bool saved = xml.saveFile(ofToDataPath("settings.xml"));
         ofLogNotice("ofApp") << "Settings saved " << (saved ? "successfully" : "unsuccessfully") << " to settings.xml";
@@ -542,7 +620,7 @@ void ofApp::exit() {
 void ofApp::keyPressed(int key) {
     // Check for shift key
     bool shiftPressed = ofGetKeyPressed(OF_KEY_SHIFT);
-    
+
     // Process key controls
     // Use videoManager methods for device control
     int currentDeviceIndex = videoManager->getCurrentVideoDeviceIndex();
@@ -554,18 +632,18 @@ void ofApp::keyPressed(int key) {
         case '`':
             debugEnabled = !debugEnabled;
             break;
-            
+
          // Video device controls (using videoManager now) / NDI Source Switching
          case '<': // ASCII value 60
               if (currentInputSource == NDI && !shiftPressed) {
                   // NDI Source Switching (Previous)
-                  int nSources = ndiReceiver.GetSenderCount(); 
+                  int nSources = ndiReceiver.GetSenderCount();
                   if (nSources > 0) {
-                      int newNdiIndex = (currentNdiSourceIndex - 1 + nSources) % nSources; 
+                      int newNdiIndex = (currentNdiSourceIndex - 1 + nSources) % nSources;
                       ofLogNotice("ofApp::keyPressed") << "Attempting to switch NDI source from " << currentNdiSourceIndex << " to " << newNdiIndex;
                       ndiReceiver.ReleaseReceiver(); // Release current connection
                       // Attempt to create receiver for the new index
-                      if (ndiReceiver.CreateReceiver(newNdiIndex)) { 
+                      if (ndiReceiver.CreateReceiver(newNdiIndex)) {
                           currentNdiSourceIndex = newNdiIndex; // Update index if successful
                           ofLogNotice("ofApp::keyPressed") << "Successfully switched NDI source to index: " << currentNdiSourceIndex << " (" << ndiReceiver.GetSenderName() << ")";
                       } else {
@@ -588,13 +666,13 @@ void ofApp::keyPressed(int key) {
                  }
             }
              break;
-             
+
          case '>': // ASCII value 62
               if (currentInputSource == NDI && !shiftPressed) {
                   // NDI Source Switching (Next)
-                   int nSources = ndiReceiver.GetSenderCount(); 
+                   int nSources = ndiReceiver.GetSenderCount();
                   if (nSources > 0) {
-                      int newNdiIndex = (currentNdiSourceIndex + 1) % nSources; 
+                      int newNdiIndex = (currentNdiSourceIndex + 1) % nSources;
                       ofLogNotice("ofApp::keyPressed") << "Attempting to switch NDI source from " << currentNdiSourceIndex << " to " << newNdiIndex;
                       ndiReceiver.ReleaseReceiver(); // Release current connection
                       // Attempt to create receiver for the new index
@@ -640,7 +718,7 @@ void ofApp::keyPressed(int key) {
              }
              break;
 
-            
+
         // Audio enabling/disabling (capital A)
         case 'A':
             audioManager->setEnabled(!audioManager->isEnabled());
@@ -666,13 +744,13 @@ void ofApp::keyPressed(int key) {
             break;
 
         // Next audio device (Keep 'D' for audio, avoid conflict with '<'/'<')
-        case 'D': 
+        case 'D':
             if (shiftPressed) {
                 int current = audioManager->getCurrentDeviceIndex();
                 audioManager->selectAudioDevice(current + 1);
             }
             break;
-        
+
         // Parameter controls
         case 'a':
             paramManager->setLumakeyValue(paramManager->getLumakeyValue() + 0.01f);
@@ -680,105 +758,105 @@ void ofApp::keyPressed(int key) {
         case 'z':
             paramManager->setLumakeyValue(paramManager->getLumakeyValue() - 0.01f);
             break;
-            
+
         case 's':
             paramManager->setZFrequency(paramManager->getZFrequency() + 0.0001f);
             break;
         case 'x':
             paramManager->setZFrequency(paramManager->getZFrequency() - 0.0001f);
             break;
-            
+
         case 'd':
             paramManager->setYDisplace(paramManager->getYDisplace() + 0.0001f);
             break;
         case 'c':
             paramManager->setYDisplace(paramManager->getYDisplace() - 0.0001f);
             break;
-            
+
         case 'f':
             paramManager->setHue(paramManager->getHue() + 0.001f);
             break;
         case 'v':
             paramManager->setHue(paramManager->getHue() - 0.001f);
             break;
-            
+
         case 'g':
             paramManager->setSaturation(paramManager->getSaturation() + 0.001f);
             break;
         case 'b':
             paramManager->setSaturation(paramManager->getSaturation() - 0.001f);
             break;
-            
+
         case 'h':
             paramManager->setBrightness(paramManager->getBrightness() + 0.001f);
             break;
         case 'n':
             paramManager->setBrightness(paramManager->getBrightness() - 0.001f);
             break;
-            
+
         case 'j':
             paramManager->setMix(paramManager->getMix() + 0.01f);
             break;
         case 'm':
             paramManager->setMix(paramManager->getMix() - 0.01f);
             break;
-            
-        case 'k': 
+
+        case 'k':
             paramManager->setLumakeyValue(ofClamp(paramManager->getLumakeyValue() + 0.01f, 0.0f, 1.0f));
             break;
-        case ',': 
+        case ',':
             paramManager->setLumakeyValue(ofClamp(paramManager->getLumakeyValue() - 0.01f, 0.0f, 1.0f));
             break;
-            
-        case 'l': 
+
+        case 'l':
             paramManager->setSharpenAmount(paramManager->getSharpenAmount() + 0.01f);
             break;
         case '.':
             paramManager->setSharpenAmount(paramManager->getSharpenAmount() - 0.01f);
             break;
-            
+
         case ';':
             paramManager->setTemporalFilterResonance(paramManager->getTemporalFilterResonance() + 0.01f);
             break;
         case '\'':
             paramManager->setTemporalFilterResonance(paramManager->getTemporalFilterResonance() - 0.01f);
             break;
-            
+
         case 'q':
             paramManager->setRotate(paramManager->getRotate() + 0.0001f);
             break;
         case 'w':
             paramManager->setRotate(paramManager->getRotate() - 0.0001f);
             break;
-            
+
         case 'e':
             paramManager->setHueModulation(paramManager->getHueModulation() + 0.001f);
             break;
         case 'r':
             paramManager->setHueModulation(paramManager->getHueModulation() - 0.001f);
             break;
-            
+
         case 't':
             paramManager->setHueOffset(paramManager->getHueOffset() + 0.01f);
             break;
         case 'y':
             paramManager->setHueOffset(paramManager->getHueOffset() - 0.01f);
             break;
-            
+
         case 'u':
             paramManager->setHueLFO(paramManager->getHueLFO() + 0.01f);
             break;
         case 'i':
             paramManager->setHueLFO(paramManager->getHueLFO() - 0.01f);
             break;
-            
+
         case 'o':
             paramManager->setTemporalFilterMix(paramManager->getTemporalFilterMix() + 0.01f);
             break;
         case 'p':
             paramManager->setTemporalFilterMix(paramManager->getTemporalFilterMix() - 0.01f);
             break;
-            
+
         // Frame buffer delay controls
         case '[':
             paramManager->setDelayAmount(paramManager->getDelayAmount() + 1);
@@ -792,12 +870,12 @@ void ofApp::keyPressed(int key) {
                 paramManager->setDelayAmount(delay);
             }
             break;
-            
+
         // Reset all parameters
         case '!':
             paramManager->resetToDefaults();
             break;
-            
+
         // LFO mode controls
         case '1':
             if (shiftPressed) {
@@ -810,7 +888,7 @@ void ofApp::keyPressed(int key) {
                 }
             }
             break;
-            
+
         case '2':
             if (shiftPressed) {
                 paramManager->setLfoRateModeEnabled(true);
@@ -822,7 +900,7 @@ void ofApp::keyPressed(int key) {
                 }
             }
             break;
-            
+
         // Reset all LFOs
         case '0':
             paramManager->setXLfoAmp(0.0f);
@@ -834,7 +912,7 @@ void ofApp::keyPressed(int key) {
             paramManager->setRotateLfoAmp(0.0f);
             paramManager->setRotateLfoRate(0.0f);
             break;
-            
+
             // Toggle performance mode
 //             case 'P':
 //                 if (shiftPressed) {
@@ -846,14 +924,14 @@ void ofApp::keyPressed(int key) {
 //                     // Adjust other managers for performance if needed
 //                 }
 //                 break;
-                 
+
              // Fullscreen toggle
              case 'F':
                  if (shiftPressed) {
                      ofToggleFullscreen();
                  }
                  break;
-                 
+
              // Save settings
              case 'S':
                  if (shiftPressed) {
@@ -864,7 +942,7 @@ void ofApp::keyPressed(int key) {
                      ofLogNotice("ofApp") << "Settings saved to settings.xml";
                  }
                  break;
-                 
+
              // Load settings
              case 'L':
                  if (shiftPressed) {
@@ -877,13 +955,13 @@ void ofApp::keyPressed(int key) {
                  }
                  break;
     }
-    
+
 }
 
 //--------------------------------------------------------------
 void ofApp::keyReleased(int key) {
     bool shiftPressed = ofGetKeyPressed(OF_KEY_SHIFT);
-    
+
     // Handle key release events
     switch (key) {
         case '1':
@@ -892,7 +970,7 @@ void ofApp::keyReleased(int key) {
                 paramManager->setRecordingEnabled(true);
             }
             break;
-            
+
         case '2':
             if (shiftPressed) {
                 paramManager->setLfoRateModeEnabled(false);
@@ -905,16 +983,16 @@ void ofApp::keyReleased(int key) {
 //--------------------------------------------------------------
 void ofApp::drawSystemInfo(int x, int y, int lineHeight) {
     ofSetColor(255, 255, 0);
-    
+
     ofDrawBitmapString("SYSTEM INFO", x, y);
     y += lineHeight;
-    
+
     ofDrawBitmapString("Resolution: " + ofToString(ofGetWidth()) + "x" + ofToString(ofGetHeight()), x, y);
     y += lineHeight;
-    
+
     ofDrawBitmapString("OpenGL: " + ofToString(ofGetGLRenderer()), x, y);
     y += lineHeight;
-    
+
     // Get app runtime
     float runTime = ofGetElapsedTimef();
     int hours = floor(runTime / 3600);
@@ -923,21 +1001,21 @@ void ofApp::drawSystemInfo(int x, int y, int lineHeight) {
     string timeStr = ofToString(hours, 2, '0') + ":" +
                      ofToString(minutes, 2, '0') + ":" +
                      ofToString(seconds, 2, '0');
-    
+
     ofDrawBitmapString("Runtime: " + timeStr, x, y);
     y += lineHeight;
 }
 
 void ofApp::drawPerformanceInfo(int x, int y, int lineHeight) {
     ofSetColor(255, 255, 0);
-    
+
     ofDrawBitmapString("PERFORMANCE", x, y);
     y += lineHeight;
-    
+
     string fpsStr = "FPS: " + ofToString(ofGetFrameRate(), 1);
     ofDrawBitmapString(fpsStr, x, y);
     y += lineHeight;
-    
+
     // Calculate average FPS
     float avgFps = 0;
     if (!frameTimeHistory.empty()) { // Avoid division by zero
@@ -946,28 +1024,28 @@ void ofApp::drawPerformanceInfo(int x, int y, int lineHeight) {
         }
          avgFps /= frameTimeHistory.size();
     }
-    
+
     string avgFpsStr = "Avg FPS: " + ofToString(avgFps, 1);
     ofDrawBitmapString(avgFpsStr, x, y);
     y += lineHeight;
-    
+
     // Draw FPS graph
     int graphWidth = 120;
     int graphHeight = 40;
-    
+
     ofSetColor(50);
     ofDrawRectangle(x, y, graphWidth, graphHeight);
-    
+
     ofSetColor(0, 255, 0);
     int historySize = frameTimeHistory.size();
     for (int i = 0; i < historySize; i++) {
         float frameTime = frameTimeHistory[i];
         float currentFps = (frameTime > 0) ? (1000.0f / frameTime) : 0; // Avoid division by zero
         float barHeight = ofMap(currentFps, 0, 60, 0, graphHeight, true); // Clamp values
-        ofDrawLine(x + i * (graphWidth / (float)historySize), y + graphHeight, 
+        ofDrawLine(x + i * (graphWidth / (float)historySize), y + graphHeight,
                    x + i * (graphWidth / (float)historySize), y + graphHeight - barHeight);
     }
-    
+
     // Draw target FPS line (30 FPS)
     ofSetColor(255, 255, 0, 100);
     float y30fps = y + graphHeight - ofMap(30.0f, 0, 60.0f, 0, graphHeight, true);
@@ -976,7 +1054,7 @@ void ofApp::drawPerformanceInfo(int x, int y, int lineHeight) {
 
 void ofApp::drawVideoInfo(int x, int y, int lineHeight) {
     ofSetColor(255, 255, 0);
-    
+
     ofDrawBitmapString("VIDEO INFO", x, y);
     y += lineHeight;
 
@@ -1001,11 +1079,32 @@ void ofApp::drawVideoInfo(int x, int y, int lineHeight) {
           if (ndiReceiver.ReceiverConnected()) {
               ndiStatus += ndiReceiver.GetSenderName();
           } else {
-              ndiStatus += "Connecting...";
+          ndiStatus += "Connecting...";
           }
           ndiStatus += " (< / > to change)";
           ofDrawBitmapString(ndiStatus, x, y);
           y += lineHeight;
+
+          // List available NDI sources in debug mode
+          int nSources = ndiReceiver.GetSenderCount();
+          if (nSources > 0) {
+              ofDrawBitmapString("Available NDI Sources:", x, y);
+              y += lineHeight;
+              char nameBuffer[256];
+              for (int i = 0; i < nSources; ++i) {
+                  ndiReceiver.GetSenderName(nameBuffer, sizeof(nameBuffer), i);
+                  std::string sourceLine = "  [" + ofToString(i) + "] " + std::string(nameBuffer);
+                  if (i == currentNdiSourceIndex && ndiReceiver.ReceiverConnected()) {
+                      sourceLine += " (Connected)";
+                  }
+                  ofDrawBitmapString(sourceLine, x, y);
+                  y += lineHeight;
+              }
+          } else {
+              ofDrawBitmapString("No NDI sources found.", x, y);
+              y += lineHeight;
+          }
+
      } else if (currentInputSource == VIDEO_FILE) {
          ofDrawBitmapString("Video File: " + videoFilePath, x, y);
          y += lineHeight;
@@ -1016,10 +1115,10 @@ void ofApp::drawVideoInfo(int x, int y, int lineHeight) {
     // Display info managed by VideoFeedbackManager
     ofDrawBitmapString("Feedback buffer: " + ofToString(videoManager->getFrameBufferLength()) + " frames", x, y);
     y += lineHeight;
-    
+
     ofDrawBitmapString("Delay: " + ofToString(paramManager->getDelayAmount()) + " frames", x, y);
     y += lineHeight;
-    
+
     ofDrawBitmapString("HDMI Aspect: " + ofToString(videoManager->isHdmiAspectRatioEnabled()), x, y);
     y += lineHeight;
 }
@@ -1030,73 +1129,73 @@ void ofApp::drawAudioDebugInfo(int x, int y, int lineHeight) {
     ofSetColor(255, 255, 0);
     ofDrawBitmapString("--- Audio Reactivity ---", x, y);
     y += lineHeight;
-    
+
     // Enabled state
     ofDrawBitmapString("Enabled: " + ofToString(audioManager->isEnabled()), x, y);
     y += lineHeight;
-    
+
     // Audio device info
     ofDrawBitmapString("Device: " + audioManager->getCurrentDeviceName(), x, y);
     y += lineHeight;
-    
+
     // Audio level
     float level = audioManager->getAudioInputLevel();
     ofDrawBitmapString("Level: " + ofToString(level, 3), x, y);
     y += lineHeight;
-    
+
     // Audio settings
     ofDrawBitmapString("Sensitivity: " + ofToString(audioManager->getSensitivity(), 2), x, y);
     y += lineHeight;
-    
+
     ofDrawBitmapString("Smoothing: " + ofToString(audioManager->getSmoothing(), 2), x, y);
     y += lineHeight;
-    
+
     ofDrawBitmapString("Normalization: " + ofToString(audioManager->isNormalizationEnabled()), x, y);
     y += lineHeight;
-    
+
     // Draw frequency bands
     y += lineHeight;
     ofDrawBitmapString("Frequency Bands:", x, y);
     y += lineHeight;
-    
+
     // Draw band visualization
     int numBands = audioManager->getNumBands();
     std::vector<float> bands = audioManager->getAllBands();
-    
+
     int bandWidth = 20;
     int bandHeight = 100;
     int bandSpacing = 5;
-    
+
     ofSetColor(50);
     ofDrawRectangle(x, y, (bandWidth + bandSpacing) * numBands, bandHeight);
-    
+
     for (int i = 0; i < numBands; i++) {
         // Choose color based on band index (rainbow effect)
         ofColor bandColor;
         float hue = (float)i / numBands * 255.0f;
         bandColor.setHsb(hue, 200, 255);
-        
+
         ofSetColor(bandColor);
-        
+
         float bandValue = bands[i];
         float barHeight = bandValue * bandHeight;
-        
+
         int bandX = x + i * (bandWidth + bandSpacing);
         int bandY = y + bandHeight - barHeight;
-        
+
         ofDrawRectangle(bandX, bandY, bandWidth, barHeight);
-        
+
         // Draw band number
         ofSetColor(255);
         ofDrawBitmapString(ofToString(i), bandX + 5, y + bandHeight + 15);
     }
-    
+
     // List active mappings
     y += bandHeight + 25;
     ofSetColor(255, 255, 0);
     ofDrawBitmapString("Active Mappings:", x, y);
     y += lineHeight;
-    
+
     auto mappings = audioManager->getMappings();
     if (mappings.empty()) {
         ofDrawBitmapString("No mappings defined", x, y);
@@ -1104,12 +1203,12 @@ void ofApp::drawAudioDebugInfo(int x, int y, int lineHeight) {
         for (int i = 0; i < std::min(5, (int)mappings.size()); i++) {
             const auto& mapping = mappings[i];
             std::string modeStr = mapping.additive ? "Add" : "Set";
-            
+
             ofDrawBitmapString("Band " + ofToString(mapping.band) + " -> " +
                               mapping.paramId + " (" + modeStr + ")", x, y);
             y += lineHeight;
         }
-        
+
         if (mappings.size() > 5) {
             ofDrawBitmapString("... and " + ofToString(mappings.size() - 5) + " more", x, y);
         }
@@ -1122,54 +1221,119 @@ void ofApp::drawParameterInfo(int x, int y, int lineHeight) {
     ofSetColor(255, 255, 0);
     ofDrawBitmapString("--- Parameters ---", x, y);
     y += lineHeight;
-    
+
     // Main effect parameters
     ofDrawBitmapString("Lumakey: " + ofToString(paramManager->getLumakeyValue(), 3), x, y);
     y += lineHeight;
-    
+
     ofDrawBitmapString("Mix: " + ofToString(paramManager->getMix(), 3), x, y);
     y += lineHeight;
-    
+
     ofDrawBitmapString("Hue: " + ofToString(paramManager->getHue(), 3), x, y);
     y += lineHeight;
-    
+
     ofDrawBitmapString("Saturation: " + ofToString(paramManager->getSaturation(), 3), x, y);
     y += lineHeight;
-    
+
     ofDrawBitmapString("Brightness: " + ofToString(paramManager->getBrightness(), 3), x, y);
     y += lineHeight;
-    
+
     ofDrawBitmapString("Temp. Mix: " + ofToString(paramManager->getTemporalFilterMix(), 3), x, y);
     y += lineHeight;
-    
+
     ofDrawBitmapString("Temp. Res: " + ofToString(paramManager->getTemporalFilterResonance(), 3), x, y);
     y += lineHeight;
-    
+
     ofDrawBitmapString("Sharpen: " + ofToString(paramManager->getSharpenAmount(), 3), x, y);
     y += lineHeight;
-    
+
     // Displacement parameters
     y += lineHeight;
     ofDrawBitmapString("--- Displacement ---", x, y);
     y += lineHeight;
-    
+
     ofDrawBitmapString("X Displace: " + ofToString(paramManager->getXDisplace(), 3), x, y);
     y += lineHeight;
-    
+
     ofDrawBitmapString("Y Displace: " + ofToString(paramManager->getYDisplace(), 3), x, y);
     y += lineHeight;
-    
+
     ofDrawBitmapString("Z Displace: " + ofToString(paramManager->getZDisplace(), 3), x, y);
     y += lineHeight;
-    
+
     ofDrawBitmapString("Rotate: " + ofToString(paramManager->getRotate(), 3), x, y);
     y += lineHeight;
-    
+
     // Toggles
     y += lineHeight;
     ofDrawBitmapString("--- Toggles ---", x, y);
     y += lineHeight;
-    
+
     ofDrawBitmapString("Vert Mirror: " + ofToString(paramManager->isVerticalMirrorEnabled()), x, y);
     y += lineHeight;
+}
+
+//--------------------------------------------------------------
+void ofApp::drawMidiInfo(int x, int y, int lineHeight) {
+    ofSetColor(255, 255, 0); // Yellow color for titles/important info
+
+    ofDrawBitmapString("--- MIDI Info ---", x, y);
+    y += lineHeight;
+
+    // Display Preferred and Connected Devices
+    std::string preferred = midiManager->getPreferredDeviceName();
+    std::string connected = midiManager->getCurrentDeviceName();
+    ofDrawBitmapString("Preferred: " + (preferred.empty() ? "None Set" : preferred), x, y);
+    y += lineHeight;
+    ofDrawBitmapString("Connected: " + connected, x, y);
+    y += lineHeight;
+
+    // List Available Devices
+    y += lineHeight; // Extra space
+    ofDrawBitmapString("Available Devices:", x, y);
+    y += lineHeight;
+    auto available = midiManager->getAvailableDevices();
+    if (available.empty()) {
+        ofDrawBitmapString("  None found", x, y);
+        y += lineHeight;
+    } else {
+        for (size_t i = 0; i < available.size(); ++i) {
+            std::string deviceLine = "  [" + ofToString(i) + "] " + available[i];
+            if (i == midiManager->getCurrentDeviceIndex()) {
+                deviceLine += " (Connected)";
+            }
+            ofDrawBitmapString(deviceLine, x, y);
+            y += lineHeight;
+        }
+    }
+
+    // Display Last 4 MIDI Messages
+    y += lineHeight; // Extra space
+    ofDrawBitmapString("Last 4 MIDI Messages:", x, y);
+    y += lineHeight;
+    auto messages = midiManager->getRecentMessages();
+    int startIdx = std::max(0, (int)messages.size() - 4); // Start from the 4th last message or beginning
+    if (messages.empty()) {
+        ofDrawBitmapString("  None received", x, y);
+        y += lineHeight;
+    } else {
+        for (int i = startIdx; i < messages.size(); ++i) {
+            const auto& msg = messages[i];
+            std::string msgStr = "  ";
+            msgStr += "Port: " + ofToString(msg.portNum) + " ";
+            msgStr += "Ch: " + ofToString(msg.channel) + " ";
+            msgStr += "St: " + ofToString(msg.status) + " "; // Status (e.g., 176 for CC)
+            if (msg.status == MIDI_CONTROL_CHANGE) {
+                msgStr += "CC: " + ofToString(msg.control) + " ";
+                msgStr += "Val: " + ofToString(msg.value);
+            } else if (msg.status == MIDI_NOTE_ON || msg.status == MIDI_NOTE_OFF) {
+                msgStr += "Note: " + ofToString(msg.pitch) + " ";
+                msgStr += "Vel: " + ofToString(msg.velocity);
+            } else {
+                 msgStr += "Data: " + ofToString(msg.bytes[0]) + "," + ofToString(msg.bytes[1]) + "," + ofToString(msg.bytes[2]);
+            }
+            ofDrawBitmapString(msgStr, x, y);
+            y += lineHeight;
+        }
+    }
 }

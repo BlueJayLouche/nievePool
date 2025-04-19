@@ -158,7 +158,7 @@ void VideoFeedbackManager::processMainPipeline(const ofTexture& inputTexture) {
     // Use the dimensions of the mainFbo for drawing
     inputTexture.draw(0, 0, mainFbo.getWidth(), mainFbo.getHeight());
     
-    // Get parameters 
+    // Get parameters
     float lumakeyValue = paramManager->getLumakeyValue();
     float mix = paramManager->getMix();
     float hue = paramManager->getHue();
@@ -185,16 +185,16 @@ void VideoFeedbackManager::processMainPipeline(const ofTexture& inputTexture) {
     float zLfoRate = paramManager->getZLfoRate();
     float rotateLfoAmp = paramManager->getRotateLfoAmp();
     float rotateLfoRate = paramManager->getRotateLfoRate();
-      
-    if (frameBufferLength <= 0) delayIndex = 0; 
-    if (delayIndex < 0 || delayIndex >= frameBufferLength) delayIndex = 0; 
-    
+
+    if (frameBufferLength <= 0) delayIndex = 0;
+    if (delayIndex < 0 || delayIndex >= frameBufferLength) delayIndex = 0;
+
     // Apply LFO modulation
     xDisplace += 0.01f * xLfoAmp * sin(ofGetElapsedTimef() * xLfoRate);
     yDisplace += 0.01f * yLfoAmp * sin(ofGetElapsedTimef() * yLfoRate);
     zDisplace *= (1.0f + 0.05f * zLfoAmp * sin(ofGetElapsedTimef() * zLfoRate));
     rotate += 0.314159265f * rotateLfoAmp * sin(ofGetElapsedTimef() * rotateLfoRate);
-    
+
     try {
         // Send textures
         if (pastFrames && delayIndex >= 0 && delayIndex < frameBufferLength && pastFrames[delayIndex].isAllocated()) {
@@ -215,7 +215,7 @@ void VideoFeedbackManager::processMainPipeline(const ofTexture& inputTexture) {
         } else {
             // ofLogWarning("VideoFeedbackManager") << "Temporal filter texture at index " << tempIdx << " not ready.";
         }
-        
+
         // Send uniforms
         mixerShader.setUniform1f("lumakey", lumakeyValue);
         mixerShader.setUniform1f("fbMix", mix);
@@ -248,7 +248,7 @@ void VideoFeedbackManager::processMainPipeline(const ofTexture& inputTexture) {
         mixerShader.setUniform1f("vSat", paramManager->getVSaturation());
         mixerShader.setUniform1f("vBright", paramManager->getVBrightness());
         mixerShader.setUniform1f("vtemporalFilterMix", paramManager->getVTemporalFilterMix());
-        mixerShader.setUniform1f("vFb1X", paramManager->getVTemporalFilterResonance());
+        mixerShader.setUniform1f("vFb1X", paramManager->getVTemporalFilterResonance()); // Mismatch? vFb1X vs vTemporalFilterResonance
         mixerShader.setUniform1f("vX", paramManager->getVXDisplace());
         mixerShader.setUniform1f("vY", paramManager->getVYDisplace());
         mixerShader.setUniform1f("vZ", paramManager->getVZDisplace());

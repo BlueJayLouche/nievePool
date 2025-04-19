@@ -37,6 +37,7 @@ public:
     std::vector<std::string> getAvailableDevices() const;
     std::string getCurrentDeviceName() const;
     int getCurrentDeviceIndex() const;
+    std::string getPreferredDeviceName() const; // Added getter for preferred name
     
     // Settings
     void loadSettings(ofxXmlSettings& xml);

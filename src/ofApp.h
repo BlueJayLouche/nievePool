@@ -35,6 +35,7 @@ public:
     // Debug visualization
     void drawDebugInfo();
     void drawAudioDebugInfo(int x, int y, int lineHeight); // Added method for audio debugging
+    void drawMidiInfo(int x, int y, int lineHeight); // Added method for MIDI debugging
     
 private:
     // Input Source Management
@@ -69,6 +70,7 @@ private:
     // std::vector<ofxNdiSource> ndiSources; // Reverted
     ofTexture ndiTexture; // Texture to hold the received NDI frame (used as input)
     int currentNdiSourceIndex = 0; // Reverted - Index of the currently selected NDI source (start at 0)
+    // Removed discoveredNdiSources vector - list managed internally by receiver
 
     // Texture to hold the currently selected input before processing
     ofTexture currentInputTexture; 
