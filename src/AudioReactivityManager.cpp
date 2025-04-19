@@ -11,15 +11,15 @@ AudioReactivityManager::AudioReactivityManager(ParameterManager* paramManager)
       audioInputLevel(0.0f),
       bufferSize(1024),
       normalizationEnabled(true) {
-    
+
     // Ensure vectors are properly initialized
     fftSpectrum.resize(kNumFFTBins / 2, 0.0f);
     fftSmoothed.resize(kNumFFTBins / 2, 0.0f);
-    
+
     bands.resize(numBands, 0.0f);
     smoothedBands.resize(numBands, 0.0f);
     audioBuffer.resize(bufferSize, 0.0f);
-    
+
     // Additional initialization
     setupDefaultBandRanges();
     listAudioDevices();
@@ -37,18 +37,18 @@ void AudioReactivityManager::setup(ParameterManager* paramManager, bool performa
     if (bandRanges.empty()) {
         setupDefaultBandRanges();
     }
-    
+
     // Adjust buffer size for performance if needed
     if (performanceMode) {
         bufferSize = 512; // Smaller FFT size for performance
     }
-    
+
     // Create FFT object with power-of-two size and Hamming window (good for audio)
     fft = std::shared_ptr<ofxFft>(ofxFft::create(bufferSize, OF_FFT_WINDOW_HAMMING));
-    
+
     // Resize audio buffer for the new size
     audioBuffer.resize(bufferSize, 0.0f);
-    
+
     // Setup audio input if enabled
     if (enabled) {
         setupAudioInput();
@@ -58,10 +58,10 @@ void AudioReactivityManager::setup(ParameterManager* paramManager, bool performa
 // Clean shutdown of audio system
 void AudioReactivityManager::exit() {
     closeAudioInput();
-    
+
     // Wait for audio threads to complete
     ofSleepMillis(100);
-    
+
     // Release FFT resources
     std::lock_guard<std::mutex> lock(audioMutex);
     fft.reset();
@@ -69,7 +69,7 @@ void AudioReactivityManager::exit() {
 
 void AudioReactivityManager::setupDefaultBandRanges() {
     bandRanges.clear();
-    
+
     // Logarithmic distribution of frequency bands (more detail in low frequencies)
     // These bands roughly correspond to:
     // 0: Sub bass (20-60Hz)
@@ -80,11 +80,11 @@ void AudioReactivityManager::setupDefaultBandRanges() {
     // 5: Presence (4-6kHz)
     // 6: Brilliance (6-12kHz)
     // 7: Air (12-20kHz)
-    
+
     // Calculate frequency range based on sample rate (typically 44100Hz)
     // Each bin represents (sampleRate/2) / (kNumFFTBins/2) Hz
     // For 44100Hz sample rate and 1024 FFT size, each bin is about 43Hz
-    
+
     if (numBands == 8) {
         // These bin ranges are adjusted for kNumFFTBins = 1024 and 44100Hz sample rate
         bandRanges = {
@@ -103,7 +103,7 @@ void AudioReactivityManager::setupDefaultBandRanges() {
         // as the second half are mirrored for real signals
         int usableBins = kNumFFTBins / 2;
         int binsPerBand = usableBins / numBands;
-        
+
         for (int i = 0; i < numBands; i++) {
             int minBin = i * binsPerBand;
             int maxBin = ((i+1) * binsPerBand) - 1;
@@ -117,18 +117,18 @@ void AudioReactivityManager::setupDefaultBandRanges() {
 
 void AudioReactivityManager::update() {
     if (!enabled || !paramManager || !fft) return;
-    
+
     // Use mutex to protect FFT data during analysis
     {
         std::lock_guard<std::mutex> lock(audioMutex);
-        
+
         // Analyze audio input
         analyzeAudio();
-        
+
         // Group FFT bins into bands
         groupBands();
     }
-    
+
     // Apply mappings to parameters
     applyMappings();
 }
@@ -137,47 +137,47 @@ void AudioReactivityManager::update() {
 void AudioReactivityManager::analyzeAudio() {
     // Get amplitude spectrum from FFT
     const auto& fftResult = fft->getAmplitudeVector();
-    
+
     // Check that we have FFT data to process
     if (fftResult.empty()) {
         ofLogWarning("AudioReactivityManager") << "FFT result is empty!";
         return;
     }
-    
+
     // Process only the first half of the spectrum (real signals mirror)
     int spectrumSize = std::min<int>(fftResult.size(), kNumFFTBins / 2);
-    
+
     // Ensure our storage vectors are the right size
     if (fftSpectrum.size() != spectrumSize) {
         fftSpectrum.resize(spectrumSize, 0.0f);
         fftSmoothed.resize(spectrumSize, 0.0f);
     }
-    
+
     // More aggressive processing from sputnikMesh
     float maxVal = 0.0f;
     for (int i = 0; i < spectrumSize; i++) {
         // Apply high sensitivity and exponential scaling
         float value = powf(fftResult[i] * sensitivity * 10.0f, 2.0f);
-        
+
         // Track maximum value for normalization
         if (normalizationEnabled) {
             maxVal = std::max(maxVal, value);
         }
-        
+
         // Store raw spectrum
         fftSpectrum[i] = value;
     }
-    
+
     // If normalization is disabled, use a fixed value instead
     if (!normalizationEnabled) {
         maxVal = 1.0f;  // Use raw values without normalization
     }
-    
+
     // Normalize (if enabled) and smooth (sputnikMesh version)
     for (int i = 0; i < spectrumSize; i++) {
         // Normalize by max value or use direct value if normalization is disabled
         float processedValue = (maxVal > 0) ? fftSpectrum[i] / maxVal : 0.0f;
-        
+
         // More aggressive smoothing with peak detection
         fftSmoothed[i] = std::max(
             fftSmoothed[i] * smoothing,  // Decay
@@ -188,7 +188,7 @@ void AudioReactivityManager::analyzeAudio() {
 
 void AudioReactivityManager::setEnabled(bool enabled) {
     this->enabled = enabled;
-    
+
     // Setup or close audio input based on enabled state
     if (enabled) {
         setupAudioInput();
@@ -201,11 +201,11 @@ void AudioReactivityManager::groupBands() {
     // Calculate average energy for each band range
     for (int i = 0; i < numBands; i++) {
         if (i >= bandRanges.size()) continue;
-        
+
         const BandRange& range = bandRanges[i];
         float sum = 0.0f;
         int count = 0;
-        
+
         // Sum the FFT bins in this band's range
         for (int bin = range.minBin; bin <= range.maxBin; bin++) {
             if (bin < fftSmoothed.size()) {
@@ -213,13 +213,13 @@ void AudioReactivityManager::groupBands() {
                 count++;
             }
         }
-        
+
         // Calculate average (avoid division by zero)
         float average = (count > 0) ? (sum / count) : 0.0f;
-        
+
         // Apply smoothing between frames
         smoothedBands[i] = average * (1.0f - smoothing) + smoothedBands[i] * smoothing;
-        
+
         // Store raw band energy
         bands[i] = average;
     }
@@ -231,11 +231,11 @@ void AudioReactivityManager::applyMappings() {
         if (mapping.band >= 0 && mapping.band < numBands) {
             // Get the audio band value
             float value = smoothedBands[mapping.band];
-            
+
             // Scale and constrain to min/max range (sputnikMesh logic)
             value = mapping.min + value * mapping.scale * (mapping.max - mapping.min);
             value = ofClamp(value, mapping.min, mapping.max);
-            
+
             // Apply to parameter using the existing applyParameterValue method
             // which handles the parameter ID matching for this project
             applyParameterValue(mapping.paramId, value, mapping.additive);
@@ -245,148 +245,78 @@ void AudioReactivityManager::applyMappings() {
 
 
 void AudioReactivityManager::applyParameterValue(const std::string& paramId, float value, bool additive) {
+    // Note: The 'additive' flag from settings is now ignored here.
+    // We always call the dedicated offset setters in ParameterManager.
     if (!paramManager) return;
-    
-    // Match parameter IDs to the actual methods in ParameterManager
+
+    // Match parameter IDs and call the corresponding *offset* setter
     if (paramId == "lumakey_value" || paramId == "lumakeyValue") {
-        if (additive) {
-            paramManager->setLumakeyValue(paramManager->getLumakeyValue() + value);
-        } else {
-            paramManager->setLumakeyValue(value);
-        }
+        paramManager->setAudioLumakeyValueOffset(value);
     }
     else if (paramId == "mix") {
-        if (additive) {
-            paramManager->setMix(paramManager->getMix() + value);
-        } else {
-            paramManager->setMix(value);
-        }
+        paramManager->setAudioMixOffset(value);
     }
     else if (paramId == "hue") {
-        if (additive) {
-            paramManager->setHue(paramManager->getHue() + value);
-        } else {
-            paramManager->setHue(value);
-        }
+        paramManager->setAudioHueOffset(value);
     }
     else if (paramId == "saturation") {
-        if (additive) {
-            paramManager->setSaturation(paramManager->getSaturation() + value);
-        } else {
-            paramManager->setSaturation(value);
-        }
+        paramManager->setAudioSaturationOffset(value);
     }
     else if (paramId == "brightness") {
-        if (additive) {
-            paramManager->setBrightness(paramManager->getBrightness() + value);
-        } else {
-            paramManager->setBrightness(value);
-        }
+        paramManager->setAudioBrightnessOffset(value);
     }
     else if (paramId == "temporal_filter_mix" || paramId == "temporalFilterMix") {
-        if (additive) {
-            paramManager->setTemporalFilterMix(paramManager->getTemporalFilterMix() + value);
-        } else {
-            paramManager->setTemporalFilterMix(value);
-        }
+        paramManager->setAudioTemporalFilterMixOffset(value);
     }
     else if (paramId == "temporal_filter_resonance" || paramId == "temporalFilterResonance") {
-        if (additive) {
-            paramManager->setTemporalFilterResonance(paramManager->getTemporalFilterResonance() + value);
-        } else {
-            paramManager->setTemporalFilterResonance(value);
-        }
+        paramManager->setAudioTemporalFilterResonanceOffset(value);
     }
     else if (paramId == "sharpen_amount" || paramId == "sharpenAmount") {
-        if (additive) {
-            paramManager->setSharpenAmount(paramManager->getSharpenAmount() + value);
-        } else {
-            paramManager->setSharpenAmount(value);
-        }
+        paramManager->setAudioSharpenAmountOffset(value);
     }
     else if (paramId == "x_displace" || paramId == "xDisplace") {
-        if (additive) {
-            paramManager->setXDisplace(paramManager->getXDisplace() + value);
-        } else {
-            paramManager->setXDisplace(value);
-        }
+        paramManager->setAudioXDisplaceOffset(value);
     }
     else if (paramId == "y_displace" || paramId == "yDisplace") {
-        if (additive) {
-            paramManager->setYDisplace(paramManager->getYDisplace() + value);
-        } else {
-            paramManager->setYDisplace(value);
-        }
+        paramManager->setAudioYDisplaceOffset(value);
     }
     else if (paramId == "z_displace" || paramId == "zDisplace") {
-        if (additive) {
-            paramManager->setZDisplace(paramManager->getZDisplace() + value);
-        } else {
-            paramManager->setZDisplace(value);
-        }
+        paramManager->setAudioZDisplaceOffset(value);
     }
     else if (paramId == "z_frequency" || paramId == "zFrequency") {
-        if (additive) {
-            paramManager->setZFrequency(paramManager->getZFrequency() + value);
-        } else {
-            paramManager->setZFrequency(value);
-        }
+        paramManager->setAudioZFrequencyOffset(value);
     }
     else if (paramId == "x_frequency" || paramId == "xFrequency") {
-        if (additive) {
-            paramManager->setXFrequency(paramManager->getXFrequency() + value);
-        } else {
-            paramManager->setXFrequency(value);
-        }
+        paramManager->setAudioXFrequencyOffset(value);
     }
     else if (paramId == "y_frequency" || paramId == "yFrequency") {
-        if (additive) {
-            paramManager->setYFrequency(paramManager->getYFrequency() + value);
-        } else {
-            paramManager->setYFrequency(value);
-        }
+        paramManager->setAudioYFrequencyOffset(value);
     }
     else if (paramId == "rotate") {
-        if (additive) {
-            paramManager->setRotate(paramManager->getRotate() + value);
-        } else {
-            paramManager->setRotate(value);
-        }
+        paramManager->setAudioRotateOffset(value);
     }
     else if (paramId == "hue_modulation" || paramId == "hueModulation") {
-        if (additive) {
-            paramManager->setHueModulation(paramManager->getHueModulation() + value);
-        } else {
-            paramManager->setHueModulation(value);
-        }
+        paramManager->setAudioHueModulationOffset(value);
     }
     else if (paramId == "hue_offset" || paramId == "hueOffset") {
-        if (additive) {
-            paramManager->setHueOffset(paramManager->getHueOffset() + value);
-        } else {
-            paramManager->setHueOffset(value);
-        }
+        // Use the renamed offset setter for hueOffset
+        paramManager->setAudioHueOffsetOffset(value);
     }
     else if (paramId == "hue_lfo" || paramId == "hueLFO") {
-        if (additive) {
-            paramManager->setHueLFO(paramManager->getHueLFO() + value);
-        } else {
-            paramManager->setHueLFO(value);
-        }
+        paramManager->setAudioHueLFOOffset(value);
     }
     else if (paramId == "delay_amount" || paramId == "delayAmount") {
-        if (additive) {
-            paramManager->setDelayAmount(paramManager->getDelayAmount() + static_cast<int>(value));
-        } else {
-            paramManager->setDelayAmount(static_cast<int>(value));
-        }
+        paramManager->setAudioDelayAmountOffset(static_cast<int>(value));
     }
+    // Note: If new parameters are added for audio reactivity,
+    // ensure corresponding offset variables and setters/getters exist in ParameterManager
+    // and update this function to call the correct offset setter.
 }
 
 void AudioReactivityManager::listAudioDevices() {
     // Get list of audio devices
     deviceList = ofSoundStreamListDevices();
-    
+
     // Print devices to console
     ofLogNotice("AudioReactivityManager") << "Available audio input devices:";
     for (int i = 0; i < deviceList.size(); i++) {
@@ -427,20 +357,20 @@ bool AudioReactivityManager::selectAudioDevice(int deviceIndex) {
         ofLogError("AudioReactivityManager") << "Invalid device index: " << deviceIndex;
         return false;
     }
-    
+
     // Close current audio input if it's open
     if (audioInputInitialized) {
         closeAudioInput();
     }
-    
+
     // Set new device index
     currentDeviceIndex = deviceIndex;
-    
+
     // Setup audio input with new device
     if (enabled) {
         setupAudioInput();
     }
-    
+
     ofLogNotice("AudioReactivityManager") << "Selected audio device: " << getCurrentDeviceName();
     return true;
 }
@@ -452,7 +382,7 @@ bool AudioReactivityManager::selectAudioDevice(const std::string& deviceName) {
             return selectAudioDevice(i);
         }
     }
-    
+
     ofLogError("AudioReactivityManager") << "Audio device not found: " << deviceName;
     return false;
 }
@@ -460,17 +390,17 @@ bool AudioReactivityManager::selectAudioDevice(const std::string& deviceName) {
 void AudioReactivityManager::setupAudioInput() {
     // Close any existing audio input
     closeAudioInput();
-    
+
     // Setup audio input stream
     ofSoundStreamSettings settings;
-    
+
     // If we have a selected device, use it
     if (currentDeviceIndex >= 0 && currentDeviceIndex < deviceList.size()) {
         settings.setInDevice(deviceList[currentDeviceIndex]);
     } else {
         ofLogWarning("AudioReactivityManager") << "No device selected, using default";
     }
-    
+
     // Configure stream
     settings.numInputChannels = 1;
     settings.numOutputChannels = 0;
@@ -478,7 +408,7 @@ void AudioReactivityManager::setupAudioInput() {
     settings.bufferSize = bufferSize;
     settings.numBuffers = 4;
     settings.setInListener(this);
-    
+
     try {
         // Setup sound stream
         soundStream.setup(settings);
@@ -502,22 +432,22 @@ void AudioReactivityManager::closeAudioInput() {
 void AudioReactivityManager::audioIn(ofSoundBuffer &input) {
     // Use mutex to protect shared data
     std::lock_guard<std::mutex> lock(audioMutex);
-    
+
     // Check if input is valid
     if (input.getNumFrames() == 0) {
         ofLogWarning("AudioReactivityManager") << "Received empty audio buffer";
         return;
     }
-    
+
     // Resize audioBuffer if needed
     if (audioBuffer.size() != bufferSize) {
         audioBuffer.resize(bufferSize, 0.0f);
     }
-    
+
     // Copy input to audioBuffer with NaN/Inf checking
     int numSamples = std::min(static_cast<int>(input.getNumFrames()), bufferSize);
     const float* inputBuffer = input.getBuffer().data();
-    
+
     // Calculate RMS for input level with NaN/Inf protection
     float sumSquared = 0.0f;
     for (int i = 0; i < numSamples; i++) {
@@ -528,15 +458,15 @@ void AudioReactivityManager::audioIn(ofSoundBuffer &input) {
         audioBuffer[i] = sample;
         sumSquared += sample * sample;
     }
-    
+
     // Update input level (avoid division by zero)
     audioInputLevel = (numSamples > 0) ? sqrt(sumSquared / numSamples) : 0.0f;
-    
+
     // Compute FFT using pointer-based API to ensure computation
     if (fft) {
         // Explicitly set signal to trigger FFT computation
         fft->setSignal(audioBuffer.data());
-        
+
         // Use getAmplitude() to ensure FFT is computed and get pointer (optional check)
         float* amplitudePtr = fft->getAmplitude();
         // if (!amplitudePtr) {
@@ -616,22 +546,22 @@ std::vector<AudioReactivityManager::BandMapping> AudioReactivityManager::getMapp
 // Helper function to add default mappings
 void AudioReactivityManager::addDefaultMappings() {
     ofLogNotice("AudioReactivityManager") << "Adding default audio mappings";
-    
+
     BandMapping bassMapping;
     bassMapping.band = 0; bassMapping.paramId = "z_displace"; bassMapping.scale = 0.5f;
     bassMapping.min = -0.2f; bassMapping.max = 0.2f; bassMapping.additive = false;
     addMapping(bassMapping);
-    
+
     BandMapping lowMidsMapping;
     lowMidsMapping.band = 2; lowMidsMapping.paramId = "x_displace"; lowMidsMapping.scale = 0.05f;
     lowMidsMapping.min = -0.1f; lowMidsMapping.max = 0.1f; lowMidsMapping.additive = false;
     addMapping(lowMidsMapping);
-    
+
     BandMapping midsMapping;
     midsMapping.band = 3; midsMapping.paramId = "y_displace"; midsMapping.scale = 0.5f;
     midsMapping.min = -0.1f; midsMapping.max = 0.1f; midsMapping.additive = false;
     addMapping(midsMapping);
-    
+
     BandMapping highMidsMapping;
     highMidsMapping.band = 4; highMidsMapping.paramId = "hue"; highMidsMapping.scale = 0.01f;
     highMidsMapping.min = 0.8f; highMidsMapping.max = 1.2f; highMidsMapping.additive = false;
@@ -651,10 +581,10 @@ void AudioReactivityManager::addDefaultMappings() {
     airMapping.band = 7; airMapping.paramId = "brightness"; airMapping.scale = 0.5f;
     airMapping.min = 0.5f; airMapping.max = 1.5f; airMapping.additive = false; // Direct set
     addMapping(airMapping);
-    
+
     BandMapping sharpenMapping;
     sharpenMapping.band = 3; sharpenMapping.paramId = "sharpenAmount"; sharpenMapping.scale = 0.2f;
-    sharpenMapping.min = 0.0f; sharpenMapping.max = 0.2f; sharpenMapping.additive = false; 
+    sharpenMapping.min = 0.0f; sharpenMapping.max = 0.2f; sharpenMapping.additive = false;
     addMapping(sharpenMapping);
 }
 
@@ -667,39 +597,39 @@ void AudioReactivityManager::loadFromXml(ofxXmlSettings& xml) {
             ofLogNotice("AudioReactivityManager") << "No audio reactivity settings found";
             return;
         }
-        
+
         // Push into audioReactivity tag safely
         if (!xml.pushTag("audioReactivity")) {
             ofLogError("AudioReactivityManager") << "Failed to push into audioReactivity tag";
             return;
         }
-        
+
         // Load basic settings with safe defaults
         enabled = xml.getValue("enabled", false);
         normalizationEnabled = xml.getValue("normalizationEnabled", true);
         sensitivity = xml.getValue("sensitivity", 1.0f);
         smoothing = xml.getValue("smoothing", 0.85f);
         numBands = xml.getValue("numBands", 8);
-        
+
         // Device settings
         std::string deviceName = xml.getValue("deviceName", "");
         if (!deviceName.empty()) {
             selectAudioDevice(deviceName);
         }
-        
+
         // Resize bands arrays
         bands.resize(numBands, 0.0f);
         smoothedBands.resize(numBands, 0.0f);
-        
+
         // Setup default band ranges
         setupDefaultBandRanges();
-        
+
         // Safely check and load custom band ranges
         if (xml.tagExists("bandRanges") && xml.pushTag("bandRanges")) {
             int numRanges = xml.getNumTags("range");
             if (numRanges > 0) {
                 bandRanges.clear();
-                
+
                 for (int i = 0; i < numRanges; i++) {
                     if (xml.pushTag("range", i)) {
                         BandRange range;
@@ -712,10 +642,10 @@ void AudioReactivityManager::loadFromXml(ofxXmlSettings& xml) {
             }
             xml.popTag(); // pop bandRanges
         }
-        
+
         // Clear any existing mappings
         clearMappings();
-        
+
         // Safely check and load mappings
         if (xml.tagExists("mappings") && xml.pushTag("mappings")) {
             int numMappings = xml.getNumTags("mapping");
@@ -728,7 +658,7 @@ void AudioReactivityManager::loadFromXml(ofxXmlSettings& xml) {
                     mapping.min = xml.getValue("min", 0.0f);
                     mapping.max = xml.getValue("max", 1.0f);
                     mapping.additive = xml.getValue("additive", true);
-                    
+
                     addMapping(mapping);
                     xml.popTag(); // pop mapping
                 }
@@ -740,13 +670,13 @@ void AudioReactivityManager::loadFromXml(ofxXmlSettings& xml) {
         if (mappings.empty()) {
             addDefaultMappings();
         }
-        
+
         // Make sure to pop the audioReactivity tag
         xml.popTag(); // pop audioReactivity
-        
+
         ofLogNotice("AudioReactivityManager") << "Loaded audio reactivity settings with "
                                              << mappings.size() << " mappings";
-                                             
+
         // Setup audio if enabled
         if (enabled) {
             setupAudioInput();
@@ -763,7 +693,7 @@ void AudioReactivityManager::saveToXml(ofxXmlSettings& xml) const {
     if (xml.tagExists("audioReactivity")) {
         xml.removeTag("audioReactivity");
     }
-    
+
     // Add the main tag
     xml.addTag("audioReactivity");
     if (xml.pushTag("audioReactivity")) {
@@ -773,12 +703,12 @@ void AudioReactivityManager::saveToXml(ofxXmlSettings& xml) const {
         xml.setValue("sensitivity", sensitivity);
         xml.setValue("smoothing", smoothing);
         xml.setValue("numBands", numBands);
-        
+
         if (currentDeviceIndex >= 0 && currentDeviceIndex < deviceList.size()) {
             xml.setValue("deviceName", deviceList[currentDeviceIndex].name);
             xml.setValue("deviceIndex", currentDeviceIndex);
         }
-        
+
         // Save band ranges
         xml.addTag("bandRanges");
         if (xml.pushTag("bandRanges")) {
@@ -792,7 +722,7 @@ void AudioReactivityManager::saveToXml(ofxXmlSettings& xml) const {
             }
             xml.popTag(); // pop bandRanges
         }
-        
+
         // Save mappings
         xml.addTag("mappings");
         if (xml.pushTag("mappings")) {
@@ -810,10 +740,10 @@ void AudioReactivityManager::saveToXml(ofxXmlSettings& xml) const {
             }
             xml.popTag(); // pop mappings
         }
-        
+
         xml.popTag(); // pop audioReactivity
     }
-    
+
     ofLogNotice("AudioReactivityManager") << "Saved audio reactivity settings with "
                                          << mappings.size() << " mappings";
 }

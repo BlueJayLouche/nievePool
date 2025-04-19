@@ -7,26 +7,28 @@ ParameterManager::ParameterManager() {
         for (int j = 0; j < P_LOCK_SIZE; j++) {
             pLockValues[i][j] = 0.0f;
         }
-        
+
         // Initialize state tracking arrays
         midiActiveState[i] = false;
         vMidiActiveState[i] = false;
         lfoAmpActiveState[i] = false;
         lfoRateActiveState[i] = false;
     }
+    // Initialize audio offsets to zero
+    resetToDefaults(); // Call reset to ensure audio offsets are zeroed initially
 }
 
 // Helper function to initialize parameter maps
 void ParameterManager::initializeParameterMaps() {
     parameterIds = {
         // Toggles
-        "hueInvert", "saturationInvert", "brightnessInvert", "horizontalMirror", 
-        "verticalMirror", "lumakeyInvert", "toroidEnabled", "mirrorModeEnabled", 
+        "hueInvert", "saturationInvert", "brightnessInvert", "horizontalMirror",
+        "verticalMirror", "lumakeyInvert", "toroidEnabled", "mirrorModeEnabled",
         "wetModeEnabled",
         // Effect Parameters (Float)
-        "lumakeyValue", "mix", "hue", "saturation", "brightness", 
-        "temporalFilterMix", "temporalFilterResonance", "sharpenAmount", 
-        "xDisplace", "yDisplace", "zDisplace", "rotate", "hueModulation", 
+        "lumakeyValue", "mix", "hue", "saturation", "brightness",
+        "temporalFilterMix", "temporalFilterResonance", "sharpenAmount",
+        "xDisplace", "yDisplace", "zDisplace", "rotate", "hueModulation",
         "hueOffset", "hueLFO", "zFrequency", "xFrequency", "yFrequency",
         // Effect Parameters (Int)
         "delayAmount",
@@ -59,7 +61,7 @@ void ParameterManager::setup() {
     // Try to load settings from XML, this will overwrite defaults if mappings exist
     if (!loadSettings()) {
         // If loading fails (e.g., file not found), reset ensures defaults are set
-        resetToDefaults(); 
+        resetToDefaults();
     }
 }
 
@@ -70,7 +72,7 @@ void ParameterManager::update() {
 
 void ParameterManager::startRecording() {
     recordingEnabled = true;
-    
+
     // Copy current P-Lock values to all steps
     for (int i = 0; i < P_LOCK_NUMBER; i++) {
         float currentValue = pLockValues[i][currentStep];
@@ -99,13 +101,13 @@ void ParameterManager::updatePLocks() {
         // Apply smoothing formula: smoothed = current * (1-factor) + previous * factor
         pLockSmoothedValues[i] = pLockValues[i][currentStep] * (1.0f - pLockSmoothFactor)
                               + pLockSmoothedValues[i] * pLockSmoothFactor;
-        
+
         // Eliminate very small values to prevent jitter
         if (abs(pLockSmoothedValues[i]) < 0.01) {
             pLockSmoothedValues[i] = 0.0f;
         }
     }
-    
+
     // Increment step if recording is enabled
     if (recordingEnabled) {
         currentStep = (currentStep + 1) % P_LOCK_SIZE;
@@ -113,7 +115,7 @@ void ParameterManager::updatePLocks() {
 }
 
 bool ParameterManager::loadSettings() {
-    if (XML.loadFile(ofToDataPath(settingsFile))) {
+    if (XML.load(ofToDataPath(settingsFile))) { // Use load() instead of deprecated loadFile()
         loadFromXml(XML);
         return true;
     }
@@ -122,12 +124,12 @@ bool ParameterManager::loadSettings() {
 
 bool ParameterManager::saveSettings() {
     saveToXml(XML);
-    return XML.saveFile(ofToDataPath(settingsFile));
+    return XML.save(ofToDataPath(settingsFile)); // Use save() instead of deprecated saveFile()
 }
 
 void ParameterManager::resetToDefaults() {
     // Reset all parameters to defaults
-    
+
     // Toggle states
     hueInvert = false;
     saturationInvert = false;
@@ -138,7 +140,7 @@ void ParameterManager::resetToDefaults() {
     toroidEnabled = false;
     mirrorModeEnabled = false;
     wetModeEnabled = true;
-    
+
     // Effect parameters
     lumakeyValue = 0.0f;
     mix = 0.0f;
@@ -156,7 +158,10 @@ void ParameterManager::resetToDefaults() {
     hueOffset = 0.0f;
     hueLFO = 0.0f;
     delayAmount = 0;
-    
+    zFrequency = 0.03f;
+    xFrequency = 0.015f;
+    yFrequency = 0.02f;
+
     // LFO parameters
     xLfoAmp = 0.0f;
     xLfoRate = 0.0f;
@@ -166,8 +171,8 @@ void ParameterManager::resetToDefaults() {
     zLfoRate = 0.0f;
     rotateLfoAmp = 0.0f;
     rotateLfoRate = 0.0f;
-    
-    // Video reactivity parameters
+
+    // Video reactivity parameters (Keep for now)
     vLumakeyValue = 0.0f;
     vMix = 0.0f;
     vHue = 0.0f;
@@ -183,7 +188,28 @@ void ParameterManager::resetToDefaults() {
     vHueModulation = 0.0f;
     vHueOffset = 0.0f;
     vHueLFO = 0.0f;
-    
+
+    // Reset Audio Offsets
+    audioLumakeyValueOffset = 0.0f;
+    audioMixOffset = 0.0f;
+    audioHueOffset = 0.0f;
+    audioSaturationOffset = 0.0f;
+    audioBrightnessOffset = 0.0f;
+    audioTemporalFilterMixOffset = 0.0f;
+    audioTemporalFilterResonanceOffset = 0.0f;
+    audioSharpenAmountOffset = 0.0f;
+    audioXDisplaceOffset = 0.0f;
+    audioYDisplaceOffset = 0.0f;
+    audioZDisplaceOffset = 0.0f;
+    audioRotateOffset = 0.0f;
+    audioHueModulationOffset = 0.0f;
+    audioHueOffsetOffset = 0.0f;
+    audioHueLFOOffset = 0.0f;
+    audioDelayAmountOffset = 0;
+    audioZFrequencyOffset = 0.0f;
+    audioXFrequencyOffset = 0.0f;
+    audioYFrequencyOffset = 0.0f;
+
     // Mode flags
     videoReactiveMode = false;
     lfoAmpMode = false;
@@ -219,13 +245,13 @@ void ParameterManager::loadFromXml(ofxXmlSettings& xml) {
         ofLogWarning("ParameterManager") << "No paramManager tag found in settings";
         return;
     }
-    
+
     // Push into the paramManager tag
     xml.pushTag("paramManager");
 
-    // Load OSC Port 
+    // Load OSC Port
     oscPort = xml.getValue("osc:port", oscPort); // Load OSC port, keep default if not found
-    
+
     // Load video settings
     videoDevicePath = xml.getValue("video:devicePath", videoDevicePath);
     videoDeviceID = xml.getValue("video:deviceID", videoDeviceID);
@@ -233,7 +259,7 @@ void ParameterManager::loadFromXml(ofxXmlSettings& xml) {
     videoWidth = xml.getValue("video:width", videoWidth);
     videoHeight = xml.getValue("video:height", videoHeight);
     videoFrameRate = xml.getValue("video:frameRate", videoFrameRate);
-    
+
     // Load P-Lock data if available
     if (xml.tagExists("plocks")) {
         xml.pushTag("plocks");
@@ -258,7 +284,7 @@ void ParameterManager::loadFromXml(ofxXmlSettings& xml) {
         }
         xml.popTag(); // pop plocks
     }
-    
+
     // --- Load Parameters and Mappings ---
     int numParamTags = xml.getNumTags("param");
     ofLogNotice("ParameterManager::loadFromXml") << "Loading " << numParamTags << " parameters from XML.";
@@ -266,7 +292,7 @@ void ParameterManager::loadFromXml(ofxXmlSettings& xml) {
         // Get attributes using the correct tag name ("param") and index (i)
         std::string id = xml.getAttribute("param", "id", std::string("unknown"), i);
         std::string valueStr = xml.getAttribute("param", "value", std::string(""), i);
-        
+
         // Load mappings first (providing defaults with correct types if attributes are missing)
         // Ensure the ID is valid before trying to insert into maps
         if (id != "unknown" && std::find(parameterIds.begin(), parameterIds.end(), id) != parameterIds.end()) {
@@ -358,7 +384,7 @@ void ParameterManager::loadFromXml(ofxXmlSettings& xml) {
         }
         // Note: No popTag needed here as getAttribute doesn't change the current tag level
     }
-    
+
     xml.popTag(); // pop paramManager
 }
 
@@ -373,7 +399,7 @@ void ParameterManager::saveToXml(ofxXmlSettings& xml) const {
     // Save OSC Port
     xml.setValue("osc:port", oscPort);
 
-    // Save video settings 
+    // Save video settings
     xml.setValue("video:devicePath", videoDevicePath);
     xml.setValue("video:deviceID", videoDeviceID);
     xml.setValue("video:format", videoFormat);
@@ -469,17 +495,17 @@ void ParameterManager::saveToXml(ofxXmlSettings& xml) const {
     // Add a fresh plocks tag
     xml.addTag("plocks");
     xml.pushTag("plocks"); // Push into the newly added plocks tag
-    
+
     xml.setValue("smoothFactor", pLockSmoothFactor); // Save smooth factor inside plocks
 
     xml.addTag("locks");
     xml.pushTag("locks");
-    
+
     for (int i = 0; i < P_LOCK_NUMBER; i++) {
         std::string lockTag = "lock" + ofToString(i);
         xml.addTag(lockTag);
         xml.pushTag(lockTag);
-        
+
         std::string valuesStr = "";
         for (int j = 0; j < P_LOCK_SIZE; j++) {
             valuesStr += ofToString(pLockValues[i][j]);
@@ -487,16 +513,38 @@ void ParameterManager::saveToXml(ofxXmlSettings& xml) const {
                 valuesStr += ",";
             }
         }
-        
+
         xml.setValue("values", valuesStr);
         xml.popTag(); // pop lockTag
     }
-    
+
     xml.popTag(); // pop locks
     xml.popTag(); // pop plocks
-    
+
     xml.popTag(); // pop paramManager
 }
+
+
+// --- Audio Reactivity Offset Setters Implementation ---
+void ParameterManager::setAudioLumakeyValueOffset(float offset) { audioLumakeyValueOffset = offset; }
+void ParameterManager::setAudioMixOffset(float offset) { audioMixOffset = offset; }
+void ParameterManager::setAudioHueOffset(float offset) { audioHueOffset = offset; }
+void ParameterManager::setAudioSaturationOffset(float offset) { audioSaturationOffset = offset; }
+void ParameterManager::setAudioBrightnessOffset(float offset) { audioBrightnessOffset = offset; }
+void ParameterManager::setAudioTemporalFilterMixOffset(float offset) { audioTemporalFilterMixOffset = offset; }
+void ParameterManager::setAudioTemporalFilterResonanceOffset(float offset) { audioTemporalFilterResonanceOffset = offset; }
+void ParameterManager::setAudioSharpenAmountOffset(float offset) { audioSharpenAmountOffset = offset; }
+void ParameterManager::setAudioXDisplaceOffset(float offset) { audioXDisplaceOffset = offset; }
+void ParameterManager::setAudioYDisplaceOffset(float offset) { audioYDisplaceOffset = offset; }
+void ParameterManager::setAudioZDisplaceOffset(float offset) { audioZDisplaceOffset = offset; }
+void ParameterManager::setAudioRotateOffset(float offset) { audioRotateOffset = offset; }
+void ParameterManager::setAudioHueModulationOffset(float offset) { audioHueModulationOffset = offset; }
+void ParameterManager::setAudioHueOffsetOffset(float offset) { audioHueOffsetOffset = offset; }
+void ParameterManager::setAudioHueLFOOffset(float offset) { audioHueLFOOffset = offset; }
+void ParameterManager::setAudioDelayAmountOffset(int offset) { audioDelayAmountOffset = offset; }
+void ParameterManager::setAudioZFrequencyOffset(float offset) { audioZFrequencyOffset = offset; }
+void ParameterManager::setAudioXFrequencyOffset(float offset) { audioXFrequencyOffset = offset; }
+void ParameterManager::setAudioYFrequencyOffset(float offset) { audioYFrequencyOffset = offset; }
 
 
 // --- Mapping Getters Implementation ---
@@ -554,98 +602,100 @@ void ParameterManager::setMirrorModeEnabled(bool enabled) { mirrorModeEnabled = 
 bool ParameterManager::isWetModeEnabled() const { return wetModeEnabled; }
 void ParameterManager::setWetModeEnabled(bool enabled) { wetModeEnabled = enabled; }
 
-// Parameter getters/setters
-float ParameterManager::getLumakeyValue() const { return lumakeyValue + getPLockValue(PLockIndex::LUMAKEY_VALUE); }
+// Parameter getters/setters (Updated to include audio offsets)
+float ParameterManager::getLumakeyValue() const { return lumakeyValue + audioLumakeyValueOffset + getPLockValue(PLockIndex::LUMAKEY_VALUE); }
 void ParameterManager::setLumakeyValue(float value, bool recordable) {
-    lumakeyValue = value;
+    lumakeyValue = value; // Set the base value
     if (recordable) {
         recordParameter(PLockIndex::LUMAKEY_VALUE, value);
     }
 }
 
-float ParameterManager::getMix() const { return mix + getPLockValue(PLockIndex::MIX); }
+float ParameterManager::getMix() const { return mix + audioMixOffset + getPLockValue(PLockIndex::MIX); }
 void ParameterManager::setMix(float value, bool recordable) {
-    mix = value;
+    mix = value; // Set the base value
     if (recordable) {
         recordParameter(PLockIndex::MIX, value);
     }
 }
 
-float ParameterManager::getHue() const { return hue * (1.0f + getPLockValue(PLockIndex::HUE)); }
+// Note: P-Lock for Hue, Sat, Bright, ZDisplace, HueMod is multiplicative in original code.
+// Keeping that logic for P-Lock, but adding audio offset additively.
+float ParameterManager::getHue() const { return (hue + audioHueOffset) * (1.0f + getPLockValue(PLockIndex::HUE)); }
 void ParameterManager::setHue(float value, bool recordable) {
-    hue = value;
+    hue = value; // Set the base value
     if (recordable) {
         recordParameter(PLockIndex::HUE, value);
     }
 }
 
-float ParameterManager::getSaturation() const { return saturation * (1.0f + getPLockValue(PLockIndex::SATURATION)); }
+float ParameterManager::getSaturation() const { return (saturation + audioSaturationOffset) * (1.0f + getPLockValue(PLockIndex::SATURATION)); }
 void ParameterManager::setSaturation(float value, bool recordable) {
-    saturation = value;
+    saturation = value; // Set the base value
     if (recordable) {
         recordParameter(PLockIndex::SATURATION, value);
     }
 }
 
-float ParameterManager::getBrightness() const { return brightness * (1.0f + getPLockValue(PLockIndex::BRIGHTNESS)); }
+float ParameterManager::getBrightness() const { return (brightness + audioBrightnessOffset) * (1.0f + getPLockValue(PLockIndex::BRIGHTNESS)); }
 void ParameterManager::setBrightness(float value, bool recordable) {
-    brightness = value;
+    brightness = value; // Set the base value
     if (recordable) {
         recordParameter(PLockIndex::BRIGHTNESS, value);
     }
 }
 
-float ParameterManager::getTemporalFilterMix() const { return temporalFilterMix + getPLockValue(PLockIndex::TEMPORAL_FILTER_MIX); }
+float ParameterManager::getTemporalFilterMix() const { return temporalFilterMix + audioTemporalFilterMixOffset + getPLockValue(PLockIndex::TEMPORAL_FILTER_MIX); }
 void ParameterManager::setTemporalFilterMix(float value, bool recordable) {
-    temporalFilterMix = value;
+    temporalFilterMix = value; // Set the base value
     if (recordable) {
         recordParameter(PLockIndex::TEMPORAL_FILTER_MIX, value);
     }
 }
 
-float ParameterManager::getTemporalFilterResonance() const { return temporalFilterResonance + getPLockValue(PLockIndex::TEMPORAL_FILTER_RESONANCE); }
+float ParameterManager::getTemporalFilterResonance() const { return temporalFilterResonance + audioTemporalFilterResonanceOffset + getPLockValue(PLockIndex::TEMPORAL_FILTER_RESONANCE); }
 void ParameterManager::setTemporalFilterResonance(float value, bool recordable) {
-    temporalFilterResonance = value;
+    temporalFilterResonance = value; // Set the base value
     if (recordable) {
         recordParameter(PLockIndex::TEMPORAL_FILTER_RESONANCE, value);
     }
 }
 
-float ParameterManager::getSharpenAmount() const { return sharpenAmount + getPLockValue(PLockIndex::SHARPEN_AMOUNT); }
+float ParameterManager::getSharpenAmount() const { return sharpenAmount + audioSharpenAmountOffset + getPLockValue(PLockIndex::SHARPEN_AMOUNT); }
 void ParameterManager::setSharpenAmount(float value, bool recordable) {
-    sharpenAmount = value;
+    sharpenAmount = value; // Set the base value
     if (recordable) {
         recordParameter(PLockIndex::SHARPEN_AMOUNT, value);
     }
 }
 
-float ParameterManager::getXDisplace() const { return xDisplace + getPLockValue(PLockIndex::X_DISPLACE); }
+float ParameterManager::getXDisplace() const { return xDisplace + audioXDisplaceOffset + getPLockValue(PLockIndex::X_DISPLACE); }
 void ParameterManager::setXDisplace(float value, bool recordable) {
-    xDisplace = value;
+    xDisplace = value; // Set the base value
     if (recordable) {
         recordParameter(PLockIndex::X_DISPLACE, value);
     }
 }
 
-float ParameterManager::getYDisplace() const { return yDisplace + getPLockValue(PLockIndex::Y_DISPLACE); }
+float ParameterManager::getYDisplace() const { return yDisplace + audioYDisplaceOffset + getPLockValue(PLockIndex::Y_DISPLACE); }
 void ParameterManager::setYDisplace(float value, bool recordable) {
-    yDisplace = value;
+    yDisplace = value; // Set the base value
     if (recordable) {
         recordParameter(PLockIndex::Y_DISPLACE, value);
     }
 }
 
-float ParameterManager::getZDisplace() const { return zDisplace * (1.0f + getPLockValue(PLockIndex::Z_DISPLACE)); }
+float ParameterManager::getZDisplace() const { return (zDisplace + audioZDisplaceOffset) * (1.0f + getPLockValue(PLockIndex::Z_DISPLACE)); }
 void ParameterManager::setZDisplace(float value, bool recordable) {
-    zDisplace = value;
+    zDisplace = value; // Set the base value
     if (recordable) {
         recordParameter(PLockIndex::Z_DISPLACE, value);
     }
 }
 
-// Frequency getters/setters - Removed P-Lock functionality
+// Frequency getters/setters - Additive audio offset, no P-Lock
 float ParameterManager::getZFrequency() const {
-    return zFrequency;
+    return zFrequency + audioZFrequencyOffset;
 }
 
 void ParameterManager::setZFrequency(float value, bool recordable) {
@@ -654,7 +704,7 @@ void ParameterManager::setZFrequency(float value, bool recordable) {
 }
 
 float ParameterManager::getXFrequency() const {
-    return xFrequency;
+    return xFrequency + audioXFrequencyOffset;
 }
 
 void ParameterManager::setXFrequency(float value, bool recordable) {
@@ -663,7 +713,7 @@ void ParameterManager::setXFrequency(float value, bool recordable) {
 }
 
 float ParameterManager::getYFrequency() const {
-    return yFrequency;
+    return yFrequency + audioYFrequencyOffset;
 }
 
 void ParameterManager::setYFrequency(float value, bool recordable) {
@@ -671,41 +721,41 @@ void ParameterManager::setYFrequency(float value, bool recordable) {
     // No P-Lock recording for frequency
 }
 
-float ParameterManager::getRotate() const { return rotate + getPLockValue(PLockIndex::ROTATE); }
+float ParameterManager::getRotate() const { return rotate + audioRotateOffset + getPLockValue(PLockIndex::ROTATE); }
 void ParameterManager::setRotate(float value, bool recordable) {
-    rotate = value;
+    rotate = value; // Set the base value
     if (recordable) {
         recordParameter(PLockIndex::ROTATE, value);
     }
 }
 
-float ParameterManager::getHueModulation() const { return hueModulation * (1.0f - getPLockValue(PLockIndex::HUE_MODULATION)); }
+float ParameterManager::getHueModulation() const { return (hueModulation + audioHueModulationOffset) * (1.0f - getPLockValue(PLockIndex::HUE_MODULATION)); }
 void ParameterManager::setHueModulation(float value, bool recordable) {
-    hueModulation = value;
+    hueModulation = value; // Set the base value
     if (recordable) {
         recordParameter(PLockIndex::HUE_MODULATION, value);
     }
 }
 
-float ParameterManager::getHueOffset() const { return hueOffset + getPLockValue(PLockIndex::HUE_OFFSET); }
+float ParameterManager::getHueOffset() const { return hueOffset + audioHueOffsetOffset + getPLockValue(PLockIndex::HUE_OFFSET); }
 void ParameterManager::setHueOffset(float value, bool recordable) {
-    hueOffset = value;
+    hueOffset = value; // Set the base value
     if (recordable) {
         recordParameter(PLockIndex::HUE_OFFSET, value);
     }
 }
 
-float ParameterManager::getHueLFO() const { return hueLFO + getPLockValue(PLockIndex::HUE_LFO); }
+float ParameterManager::getHueLFO() const { return hueLFO + audioHueLFOOffset + getPLockValue(PLockIndex::HUE_LFO); }
 void ParameterManager::setHueLFO(float value, bool recordable) {
-    hueLFO = value;
+    hueLFO = value; // Set the base value
     if (recordable) {
         recordParameter(PLockIndex::HUE_LFO, value);
     }
 }
 
-int ParameterManager::getDelayAmount() const { return delayAmount + (int)(getPLockValue(PLockIndex::DELAY_AMOUNT) * (P_LOCK_SIZE - 1.0f)); }
+int ParameterManager::getDelayAmount() const { return delayAmount + audioDelayAmountOffset + (int)(getPLockValue(PLockIndex::DELAY_AMOUNT) * (P_LOCK_SIZE - 1.0f)); }
 void ParameterManager::setDelayAmount(int value, bool recordable) {
-    delayAmount = value;
+    delayAmount = value; // Set the base value
     if (recordable) {
         recordParameter(PLockIndex::DELAY_AMOUNT, static_cast<float>(value) / (P_LOCK_SIZE - 1.0f));
     }
